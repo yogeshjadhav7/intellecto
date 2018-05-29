@@ -56,8 +56,8 @@ class Intellecto:
 
 
     def get_next_board_state(self, i, board, queue):
-        board_copy = board.copy()
-        queue_copy = queue.copy()
+        board_copy = board[:]
+        queue_copy = queue[:]
         replacement_val = None
         if len(queue_copy) > 0:
             replacement_val = queue_copy.pop(0)
