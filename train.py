@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[13]:
+# In[14]:
 
 
 from intellecto import Intellecto
@@ -22,7 +22,7 @@ PCA_DIMENSION = 12
 PCA_MODEL_NAME = "pca.model"
 
 
-# In[11]:
+# In[15]:
 
 
 def get_training_data(n_games=N_GAMES_PER_EPISODE):
@@ -31,7 +31,7 @@ def get_training_data(n_games=N_GAMES_PER_EPISODE):
     return f, l
 
 
-# In[2]:
+# In[16]:
 
 
 def ordering_loss(ground_truth, predictions):
@@ -44,7 +44,7 @@ def ordering_loss(ground_truth, predictions):
     return np.median(loss_array) / 12.0
 
 
-# In[ ]:
+# In[17]:
 
 
 ipca = joblib.load(PCA_MODEL_NAME)
@@ -68,7 +68,7 @@ from keras.models import load_model
 MODEL_NAME = "intellecto.hdf5"
 batch_size = 8
 num_classes = I.n_bubbles
-epochs = 50
+epochs = 30
 input_size = x_val.shape[1]
 TRAIN_MODEL = True
 droprate = 0.7
@@ -141,8 +141,9 @@ except:
                   metrics=['accuracy'])
 
 def do_on_epoch_end(epoch, _):
-    y_val_ = model.predict(x_val)
-    print("Ordering loss on validation data ", ordering_loss(y_val, y_val_))
+    if (epoch + 1) % 10 == 0:
+        y_val_ = model.predict(x_val)
+        print("Ordering loss on validation data ", ordering_loss(y_val, y_val_))
     
 
 if TRAIN_MODEL:
