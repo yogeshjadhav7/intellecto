@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[7]:
+# In[13]:
 
 
 from intellecto import Intellecto
@@ -11,6 +11,7 @@ from sklearn.externals import joblib
 
 N_GAMES_PER_EPISODE = 250
 N_EPISODES = 100
+N_VALIDATION_GAMES = N_EPISODES * N_GAMES_PER_EPISODE
 I = Intellecto()
 batch_size = N_GAMES_PER_EPISODE * (I.n_bubbles + I.queue_size)
 
@@ -25,7 +26,7 @@ PCA_MODEL_NAME = "pca.model"
 
 
 def get_training_data(n_games=N_GAMES_PER_EPISODE):
-    f, l = I.play_episode(n_games=N_GAMES_PER_EPISODE)
+    f, l = I.play_episode(n_games=n_games)
     f = ipca.transform(f)
     return f, l
 
@@ -47,7 +48,8 @@ def ordering_loss(ground_truth, predictions):
 
 
 ipca = joblib.load(PCA_MODEL_NAME)
-x_val, y_val = get_training_data(n_games=N_GAMES_PER_EPISODE * 100)
+print("Fetching validation data...")
+x_val, y_val = get_training_data(n_games=N_VALIDATION_GAMES)
 
 
 # In[ ]:
