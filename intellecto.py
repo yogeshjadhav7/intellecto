@@ -22,6 +22,12 @@ class Intellecto:
         return e_x / e_x.sum(axis=0)
 
 
+    def one_hot_scores(self, x):
+        x_oh = np.zeros(len(x), dtype=np.float64)
+        x_oh[np.argmax(x)] = 1
+        return x_oh
+
+
     def reset_game(self, queue_size=None):
         if queue_size is None: queue_size = self.queue_size
         board = np.random.random_integers(low=self.min_bubble_val, high=self.max_bubble_val, size=self.n_bubbles).tolist()
@@ -122,31 +128,60 @@ class Intellecto:
         next_board, next_queue = self.get_next_board_state(i, board, queue)
         return valid_move, next_board, next_queue, move_score
 
+    def play_a_move_on_board(self, board, queue):
+        raw_moves_scores = []
+        for i in range(len(board)):
+            valid_move, _, _, move_score = self.play_move(i, board, queue)
+            if not valid_move:
+                raw_moves_scores.append(self.NONE_MOVE_SCORE)
+            else:
+                raw_moves_scores.append(move_score)
+
+        moves_score = self.softmax(raw_moves_scores)
+        #moves_score = self.one_hot_scores(raw_moves_scores)
+
+        valid_move = False
+        while not valid_move:
+            i = np.random.choice(len(moves_score), p=moves_score)
+            valid_move, board_, queue_, raw_move_score = self.play_move(i, board, queue)
+
+        return board_, queue_, moves_score, raw_move_score
+
 
     def play_game(self, board, queue):
         board_queue_moves_score_map = []
         game_over = False
         game_score = 0
+        n_moves = 0
         while not game_over:
-            raw_moves_scores = []
-            for i in range(len(board)):
-                valid_move, _, _, move_score = self.play_move(i, board, queue)
-                if not valid_move:
-                    raw_moves_scores.append(self.NONE_MOVE_SCORE)
-                else:
-                    raw_moves_scores.append(move_score)
-
-            moves_score = self.softmax(raw_moves_scores)
-            board_queue_moves_score_map.append({"board":board, "queue":queue, "moves_score":moves_score})
-            valid_move = False
-            while not valid_move:
-                i = np.random.choice(len(moves_score), p=moves_score)
-                valid_move, board, queue, raw_move_score = self.play_move(i, board, queue)
-
+            board_, queue_, moves_score, raw_move_score = self.play_a_move_on_board(board=board, queue=queue)
+            board = board_
+            queue = queue_
+            board_queue_moves_score_map.append({"board": board, "queue": queue, "moves_score": moves_score})
             game_score += raw_move_score
+            n_moves += 1
             game_over = self.is_game_over(board)
 
         return board_queue_moves_score_map, game_score
+
+    def one_hot_board(self, b, q):
+        board = b[:]
+        queue = q[:]
+        if len(queue) > 0: board.append(queue[0])
+        else: board.append(None)
+
+        x = []
+        for i in range(len(board)):
+            f = np.zeros((len(board) + 1), dtype=np.float64)
+            if board[i] is not None:
+                f[i] = 1
+                f[len(board)] = board[i]
+
+            x.append(f)
+
+        x = np.array(x, dtype=np.float64)
+        x = np.reshape(x, (1, x.size))
+        return x
 
     def play_episode(self, n_games=25, queue_size=None):
         if queue_size is None: queue_size = self.queue_size
@@ -164,22 +199,7 @@ class Intellecto:
                 q = info['queue']
                 s = info['moves_score']
 
-                if len(q) > 0:
-                    b.append(q[0])
-                else:
-                    b.append(None)
-
-                x = []
-                for i in range(len(b)):
-                    f = np.zeros((len(b) + 1), dtype=np.float64)
-                    if b[i] is not None:
-                        f[i] = 1
-                        f[len(b)] = b[i]
-
-                    x.append(f)
-
-                x = np.array(x, dtype=np.float64)
-                x = np.reshape(x, (1, x.size))
+                x = self.one_hot_board(b=b, q=q)
                 y = np.reshape(s, (1, s.size))
 
                 if len(x_game) == 0:

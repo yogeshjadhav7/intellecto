@@ -9,8 +9,8 @@ import numpy as np
 from sklearn.decomposition import IncrementalPCA
 import pickle
 
-N_GAMES_PER_EPISODE = 50
-N_EPISODES = 10000
+N_GAMES_PER_EPISODE = 100
+N_EPISODES = 1000
 I = Intellecto()
 batch_size = N_GAMES_PER_EPISODE * (I.n_bubbles + I.queue_size)
 
@@ -27,12 +27,11 @@ PCA_MODEL_NAME = "pca.model"
 def do_pca():
     try:
         ipca = pickle.load(open(PCA_MODEL_NAME, 'rb'))
-        print("Loaded saved pca model...")
-        return ipca
+        print("Loaded saved pca model. Incrementally training the model..")
     except:
         print("Could not load the pca model. Creating a new one...")
+        ipca = IncrementalPCA(n_components=PCA_DIMENSION, batch_size=batch_size)
     
-    ipca = IncrementalPCA(n_components=PCA_DIMENSION, batch_size=batch_size)
     full_to_empty_games_ratio = np.int(1 + (I.queue_size / I.n_bubbles))
     for n_episode in range(N_EPISODES):
         print("Fitting data of episode " + str(n_episode))
