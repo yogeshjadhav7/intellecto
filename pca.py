@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[1]:
+# In[4]:
 
 
 from intellecto import Intellecto
@@ -10,7 +10,7 @@ from sklearn.decomposition import IncrementalPCA
 from sklearn.externals import joblib
 
 N_GAMES_PER_EPISODE = 100
-N_EPISODES = 2500
+N_EPISODES = 1000
 I = Intellecto()
 batch_size = N_GAMES_PER_EPISODE * (I.n_bubbles + I.queue_size)
 
@@ -21,7 +21,7 @@ PCA_DIMENSION = 12
 PCA_MODEL_NAME = "pca.model"
 
 
-# In[2]:
+# In[6]:
 
 
 def do_pca():
@@ -43,11 +43,11 @@ def do_pca():
             ipca.partial_fit(x)
     
     print("Saving the pca model...")
-    joblib.dump(ipca, PCA_MODEL_NAME)
+    joblib.dump(ipca, PCA_MODEL_NAME, protocol=2)
     return ipca
 
 
-# In[3]:
+# In[7]:
 
 
 ipca = do_pca()
