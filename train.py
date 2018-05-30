@@ -67,7 +67,7 @@ MODEL_NAME = "intellecto.hdf5"
 batch_size = 8
 num_classes = I.n_bubbles
 epochs = 50
-input_size = x.shape[1]
+input_size = x_val.shape[1]
 TRAIN_MODEL = True
 droprate = 0.7
 
