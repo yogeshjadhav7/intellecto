@@ -1,13 +1,13 @@
 
 # coding: utf-8
 
-# In[1]:
+# In[7]:
 
 
 from intellecto import Intellecto
 import numpy as np
 from sklearn.decomposition import IncrementalPCA
-import pickle
+from sklearn.externals import joblib
 
 N_GAMES_PER_EPISODE = 250
 N_EPISODES = 100
@@ -21,12 +21,12 @@ PCA_DIMENSION = 12
 PCA_MODEL_NAME = "pca.model"
 
 
-# In[4]:
+# In[11]:
 
 
 def get_training_data(n_games=N_GAMES_PER_EPISODE):
     f, l = I.play_episode(n_games=N_GAMES_PER_EPISODE)
-    f = ipca.transform(x)
+    f = ipca.transform(f)
     return f, l
 
 
@@ -46,7 +46,7 @@ def ordering_loss(ground_truth, predictions):
 # In[ ]:
 
 
-ipca = pickle.load(open(PCA_MODEL_NAME, 'rb'))
+ipca = joblib.load(PCA_MODEL_NAME)
 x_val, y_val = get_training_data(n_games=N_GAMES_PER_EPISODE * 100)
 
 

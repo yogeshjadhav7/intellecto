@@ -7,10 +7,10 @@
 from intellecto import Intellecto
 import numpy as np
 from sklearn.decomposition import IncrementalPCA
-import pickle
+from sklearn.externals import joblib
 
 N_GAMES_PER_EPISODE = 100
-N_EPISODES = 1000
+N_EPISODES = 2500
 I = Intellecto()
 batch_size = N_GAMES_PER_EPISODE * (I.n_bubbles + I.queue_size)
 
@@ -26,7 +26,7 @@ PCA_MODEL_NAME = "pca.model"
 
 def do_pca():
     try:
-        ipca = pickle.load(open(PCA_MODEL_NAME, 'rb'))
+        ipca = joblib.load(PCA_MODEL_NAME)
         print("Loaded saved pca model. Incrementally training the model..")
     except:
         print("Could not load the pca model. Creating a new one...")
@@ -43,7 +43,7 @@ def do_pca():
             ipca.partial_fit(x)
     
     print("Saving the pca model...")
-    pickle.dump(ipca, open(PCA_MODEL_NAME, 'wb'))
+    joblib.dump(ipca, PCA_MODEL_NAME)
     return ipca
 
 
