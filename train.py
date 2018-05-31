@@ -11,7 +11,7 @@ from sklearn.externals import joblib
 
 N_GAMES_PER_EPISODE = 250
 N_EPISODES = 1000
-N_VALIDATION_GAMES = N_EPISODES * N_GAMES_PER_EPISODE / 100
+N_VALIDATION_GAMES = N_GAMES_PER_EPISODE * 100
 I = Intellecto()
 batch_size = N_GAMES_PER_EPISODE * (I.n_bubbles + I.queue_size)
 
@@ -47,6 +47,8 @@ def ordering_loss(ground_truth, predictions):
 
 
 ipca = joblib.load(PCA_MODEL_NAME)
+print("\n\nGetting validation data...")
+x_val, y_val = get_training_data(n_games=N_VALIDATION_GAMES)
 
 
 # In[ ]:
@@ -63,9 +65,9 @@ from keras.callbacks import ModelCheckpoint, LambdaCallback
 from keras.models import load_model
 
 MODEL_NAME = "intellecto.hdf5"
-batch_size = 1
+batch_size = 16
 num_classes = I.n_bubbles
-epochs = 25
+epochs = 30
 input_size = ipca.n_components
 TRAIN_MODEL = True
 droprate = 0.7
@@ -77,79 +79,77 @@ except:
     print("Creating new model: " + MODEL_NAME)
     
     model = Sequential()
-    model.add(Dense(units=1024, activation='elu', input_shape=(input_size, )))
+    model.add(Dense(units=1024, activation='relu', input_shape=(input_size, )))
     model.add(BatchNormalization())
     model.add(Dropout(droprate))
 
-    model.add(Dense(units=512, activation='elu'))
+    model.add(Dense(units=512, activation='relu'))
     model.add(BatchNormalization())
     model.add(Dropout(droprate))
     
-    model.add(Dense(units=512, activation='elu'))
+    model.add(Dense(units=512, activation='relu'))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 1.5))
 
-    model.add(Dense(units=256, activation='elu'))
+    model.add(Dense(units=256, activation='relu'))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 1.5))
     
-    model.add(Dense(units=256, activation='elu'))
+    model.add(Dense(units=256, activation='relu'))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 1.5))
     
-    model.add(Dense(units=256, activation='elu'))
+    model.add(Dense(units=256, activation='relu'))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 1.5))
 
-    model.add(Dense(units=128, activation='elu'))
+    model.add(Dense(units=128, activation='relu'))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 2))
     
-    model.add(Dense(units=128, activation='elu'))
+    model.add(Dense(units=128, activation='relu'))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 2))
     
-    model.add(Dense(units=128, activation='elu'))
+    model.add(Dense(units=128, activation='relu'))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 2))
 
-    model.add(Dense(units=64, activation='elu'))
+    model.add(Dense(units=64, activation='relu'))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 2))
     
-    model.add(Dense(units=64, activation='elu'))
+    model.add(Dense(units=64, activation='relu'))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 2.5))
     
-    model.add(Dense(units=32, activation='elu'))
+    model.add(Dense(units=32, activation='relu'))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 3))
     
-    model.add(Dense(units=32, activation='elu'))
+    model.add(Dense(units=32, activation='relu'))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 3))
     
-    model.add(Dense(units=16, activation='elu'))
+    model.add(Dense(units=16, activation='relu'))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 3.5))
 
-    model.add(Dense(num_classes, activation='softmax'))
+    model.add(Dense(num_classes, activation='sigmoid'))
     
     model.summary()
     
-    opt = Adam(lr=0.00075, amsgrad=True)
-    model.compile(loss='categorical_crossentropy',
-                  optimizer=opt,
+    model.compile(loss='binary_crossentropy',
+                  optimizer='adam',
                   metrics=['accuracy'])
 
 def do_on_epoch_end(epoch, _):
     if (epoch + 1) % 5 == 0:
-        x_val, y_val = get_training_data(n_games=N_VALIDATION_GAMES)
-        y_val_ = model.predict(x_val)
         score = model.evaluate(x_val, y_val, verbose=0)
         print('Test loss:', score[0])
         print('Test accuracy:', score[1])
-        print("Ordering loss on test data ", ordering_loss(y_val, y_val_))
+        y_val_ = model.predict(x_val)
+        print("Ordering loss on val data ", ordering_loss(y_val, y_val_))
     
 
 if TRAIN_MODEL:
