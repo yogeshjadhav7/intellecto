@@ -139,7 +139,7 @@ except:
     
     opt = Adam(lr=0.0001)
     model.compile(loss='categorical_crossentropy',
-                  optimizer='adam',
+                  optimizer=opt,
                   metrics=['accuracy'])
 
 def do_on_epoch_end(epoch, _):
