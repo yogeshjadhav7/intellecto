@@ -137,7 +137,7 @@ except:
     
     model.summary()
     
-    opt = Adam(lr=0.0001)
+    opt = Adam(lr=0.00075, amsgrad=True)
     model.compile(loss='categorical_crossentropy',
                   optimizer=opt,
                   metrics=['accuracy'])
