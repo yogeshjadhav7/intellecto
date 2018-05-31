@@ -10,15 +10,14 @@ from sklearn.decomposition import IncrementalPCA
 from sklearn.externals import joblib
 
 N_GAMES_PER_EPISODE = 250
-N_EPISODES = 100
-N_VALIDATION_GAMES = N_EPISODES * N_GAMES_PER_EPISODE
+N_EPISODES = 1000
+N_VALIDATION_GAMES = N_EPISODES * N_GAMES_PER_EPISODE / 100
 I = Intellecto()
 batch_size = N_GAMES_PER_EPISODE * (I.n_bubbles + I.queue_size)
 
-n_input = (I.n_bubbles + 1) * (I.n_bubbles + 2)
+n_input = (I.n_bubbles + 1) * (I.n_bubbles + 2) 
 n_output = I.n_bubbles
 
-PCA_DIMENSION = 12
 PCA_MODEL_NAME = "pca.model"
 
 
@@ -44,12 +43,10 @@ def ordering_loss(ground_truth, predictions):
     return np.median(loss_array) / 12.0
 
 
-# In[17]:
+# In[18]:
 
 
 ipca = joblib.load(PCA_MODEL_NAME)
-print("Fetching validation data...")
-x_val, y_val = get_training_data(n_games=N_VALIDATION_GAMES)
 
 
 # In[ ]:
@@ -66,10 +63,10 @@ from keras.callbacks import ModelCheckpoint, LambdaCallback
 from keras.models import load_model
 
 MODEL_NAME = "intellecto.hdf5"
-batch_size = 8
+batch_size = 1
 num_classes = I.n_bubbles
-epochs = 30
-input_size = x_val.shape[1]
+epochs = 25
+input_size = ipca.n_components
 TRAIN_MODEL = True
 droprate = 0.7
 
@@ -128,6 +125,10 @@ except:
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 3))
     
+    model.add(Dense(units=32, activation='elu'))
+    model.add(BatchNormalization())
+    model.add(Dropout(droprate / 3))
+    
     model.add(Dense(units=16, activation='elu'))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 3.5))
@@ -135,15 +136,20 @@ except:
     model.add(Dense(num_classes, activation='softmax'))
     
     model.summary()
-
+    
+    opt = Adam(lr=0.0001)
     model.compile(loss='categorical_crossentropy',
                   optimizer='adam',
                   metrics=['accuracy'])
 
 def do_on_epoch_end(epoch, _):
-    if (epoch + 1) % 10 == 0:
+    if (epoch + 1) % 5 == 0:
+        x_val, y_val = get_training_data(n_games=N_VALIDATION_GAMES)
         y_val_ = model.predict(x_val)
-        print("Ordering loss on validation data ", ordering_loss(y_val, y_val_))
+        score = model.evaluate(x_val, y_val, verbose=0)
+        print('Test loss:', score[0])
+        print('Test accuracy:', score[1])
+        print("Ordering loss on test data ", ordering_loss(y_val, y_val_))
     
 
 if TRAIN_MODEL:
@@ -156,7 +162,7 @@ if TRAIN_MODEL:
             batch_size=batch_size,
             epochs=epochs,
             verbose=0,
-            validation_data=(x_val, y_val),
+            validation_data=(x, y),
             callbacks = [
                 ModelCheckpoint(MODEL_NAME, monitor='val_acc', verbose=1, save_best_only=True, save_weights_only=False, mode='max', period=1),
                 LambdaCallback(on_epoch_end=do_on_epoch_end)
