@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[14]:
+# In[1]:
 
 
 from intellecto import Intellecto
@@ -9,9 +9,10 @@ import numpy as np
 from sklearn.decomposition import IncrementalPCA
 from sklearn.externals import joblib
 
-N_GAMES_PER_EPISODE = 250
+N_GAMES_PER_EPISODE = 200
 N_EPISODES = 1000
-N_VALIDATION_GAMES = N_GAMES_PER_EPISODE * 100
+VALIDATION_REFRESH_RATE = 100
+N_VALIDATION_GAMES = N_GAMES_PER_EPISODE * VALIDATION_REFRESH_RATE
 I = Intellecto()
 batch_size = N_GAMES_PER_EPISODE * (I.n_bubbles + I.queue_size)
 
@@ -21,7 +22,7 @@ n_output = I.n_bubbles
 PCA_MODEL_NAME = "pca.model"
 
 
-# In[15]:
+# In[2]:
 
 
 def get_training_data(n_games=N_GAMES_PER_EPISODE):
@@ -30,7 +31,7 @@ def get_training_data(n_games=N_GAMES_PER_EPISODE):
     return f, l
 
 
-# In[16]:
+# In[3]:
 
 
 def ordering_loss(ground_truth, predictions):
@@ -43,11 +44,11 @@ def ordering_loss(ground_truth, predictions):
     return np.median(loss_array) / 12.0
 
 
-# In[18]:
+# In[4]:
 
 
 ipca = joblib.load(PCA_MODEL_NAME)
-print("\n\nGetting validation data...")
+print("\n\nGetting initial validation data...")
 x_val, y_val = get_training_data(n_games=N_VALIDATION_GAMES)
 
 
@@ -63,15 +64,17 @@ from keras.optimizers import Adam
 from sklearn.preprocessing import LabelBinarizer
 from keras.callbacks import ModelCheckpoint, LambdaCallback
 from keras.models import load_model
+from keras.metrics import mean_absolute_error
 
 MODEL_NAME = "intellecto.hdf5"
-batch_size = 16
+batch_size = 1
 num_classes = I.n_bubbles
 epochs = 30
 input_size = ipca.n_components
 TRAIN_MODEL = True
-droprate = 0.7
 
+droprate = 0.7
+activation = 'relu'
 try:
     model = load_model(MODEL_NAME)
     print("Loaded saved model: " + MODEL_NAME)
@@ -79,59 +82,59 @@ except:
     print("Creating new model: " + MODEL_NAME)
     
     model = Sequential()
-    model.add(Dense(units=1024, activation='relu', input_shape=(input_size, )))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate))
-
-    model.add(Dense(units=512, activation='relu'))
+    model.add(Dense(units=1024, activation=activation, input_shape=(input_size, )))
     model.add(BatchNormalization())
     model.add(Dropout(droprate))
     
-    model.add(Dense(units=512, activation='relu'))
+    model.add(Dense(units=512, activation=activation))
+    model.add(BatchNormalization())
+    model.add(Dropout(droprate))
+
+    model.add(Dense(units=512, activation=activation))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 1.5))
 
-    model.add(Dense(units=256, activation='relu'))
+    model.add(Dense(units=256, activation=activation))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 1.5))
     
-    model.add(Dense(units=256, activation='relu'))
+    model.add(Dense(units=256, activation=activation))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 1.5))
     
-    model.add(Dense(units=256, activation='relu'))
+    model.add(Dense(units=256, activation=activation))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 1.5))
 
-    model.add(Dense(units=128, activation='relu'))
+    model.add(Dense(units=128, activation=activation))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 2))
     
-    model.add(Dense(units=128, activation='relu'))
+    model.add(Dense(units=128, activation=activation))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 2))
     
-    model.add(Dense(units=128, activation='relu'))
+    model.add(Dense(units=128, activation=activation))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 2))
 
-    model.add(Dense(units=64, activation='relu'))
+    model.add(Dense(units=64, activation=activation))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 2))
     
-    model.add(Dense(units=64, activation='relu'))
+    model.add(Dense(units=64, activation=activation))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 2.5))
     
-    model.add(Dense(units=32, activation='relu'))
+    model.add(Dense(units=32, activation=activation))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 3))
     
-    model.add(Dense(units=32, activation='relu'))
+    model.add(Dense(units=32, activation=activation))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 3))
     
-    model.add(Dense(units=16, activation='relu'))
+    model.add(Dense(units=16, activation=activation))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 3.5))
 
@@ -139,19 +142,23 @@ except:
     
     model.summary()
     
-    model.compile(loss='binary_crossentropy',
+    model.compile(loss='mean_absolute_error',
                   optimizer='adam',
-                  metrics=['accuracy'])
+                  metrics=[mean_absolute_error])
 
 def do_on_epoch_end(epoch, _):
     if (epoch + 1) % 5 == 0:
-        score = model.evaluate(x_val, y_val, verbose=0)
-        print('Test loss:', score[0])
-        print('Test accuracy:', score[1])
-        y_val_ = model.predict(x_val)
+        saved_model = load_model(MODEL_NAME)
+        y_val_ = saved_model.predict(x_val)
         print("Ordering loss on val data ", ordering_loss(y_val, y_val_))
-    
+        
+callbacks_supported = [
+    ModelCheckpoint(MODEL_NAME, monitor='val_loss', verbose=1, save_best_only=True, save_weights_only=False, mode='min', period=1),
+    LambdaCallback(on_epoch_end=do_on_epoch_end)
+]
 
+callbacks = callbacks_supported
+        
 if TRAIN_MODEL:
     for n_episodes in range(N_EPISODES):
         print("\nTraining model on episode #" + str(n_episodes) + " ...")
@@ -162,10 +169,11 @@ if TRAIN_MODEL:
             batch_size=batch_size,
             epochs=epochs,
             verbose=0,
-            validation_data=(x, y),
-            callbacks = [
-                ModelCheckpoint(MODEL_NAME, monitor='val_acc', verbose=1, save_best_only=True, save_weights_only=False, mode='max', period=1),
-                LambdaCallback(on_epoch_end=do_on_epoch_end)
-            ]
+            validation_data=(x_val, y_val),
+            callbacks = callbacks
         )
+        
+        if (n_episodes + 1) % VALIDATION_REFRESH_RATE == 0:
+            print("\n\nGetting new validation data...")
+            x_val, y_val = get_training_data(n_games=N_VALIDATION_GAMES)
 

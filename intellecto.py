@@ -4,13 +4,14 @@
 # In[1]:
 
 
+import math
 import numpy as np
 import warnings
 warnings.filterwarnings("ignore")
 
 class Intellecto:
     def __init__(self):
-        self.NONE_MOVE_SCORE = -100000 * (9**3)
+        self.NONE_MOVE_SCORE = -10 * (9**3)
         self.DEPTH = 1
         self.n_bubbles = 5
         self.queue_size = 30
@@ -20,6 +21,11 @@ class Intellecto:
     def softmax(self, x):
         e_x = np.exp(x - np.max(x))
         return e_x / e_x.sum(axis=0)
+
+
+    def sigmoid(x):
+        x_ = np.divide(x, -1 * 200)
+        return 1 / (1 + np.exp(x_))
 
 
     def one_hot_scores(self, x):
@@ -139,6 +145,7 @@ class Intellecto:
 
         moves_score = self.softmax(raw_moves_scores)
         #moves_score = self.one_hot_scores(raw_moves_scores)
+        #moves_score = self.sigmoid(raw_moves_scores)
 
         valid_move = False
         while not valid_move:
