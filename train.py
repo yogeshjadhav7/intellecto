@@ -142,7 +142,7 @@ except:
     
     model.summary()
     
-    model.compile(loss='mean_absolute_error',
+    model.compile(loss='mse',
                   optimizer='adam',
                   metrics=[mean_absolute_error])
 
