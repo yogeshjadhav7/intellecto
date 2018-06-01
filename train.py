@@ -9,9 +9,9 @@ import numpy as np
 from sklearn.decomposition import IncrementalPCA
 from sklearn.externals import joblib
 
-N_GAMES_PER_EPISODE = 200
+N_GAMES_PER_EPISODE = 100
 N_EPISODES = 1000
-VALIDATION_REFRESH_RATE = 100
+VALIDATION_REFRESH_RATE = 50
 N_VALIDATION_GAMES = N_GAMES_PER_EPISODE * VALIDATION_REFRESH_RATE
 I = Intellecto()
 batch_size = N_GAMES_PER_EPISODE * (I.n_bubbles + I.queue_size)
@@ -67,7 +67,7 @@ from keras.models import load_model
 from keras.metrics import mean_absolute_error
 
 MODEL_NAME = "intellecto.hdf5"
-batch_size = 1
+batch_size = 16
 num_classes = I.n_bubbles
 epochs = 30
 input_size = ipca.n_components
@@ -147,7 +147,7 @@ except:
                   metrics=[mean_absolute_error])
 
 def do_on_epoch_end(epoch, _):
-    if (epoch + 1) % 5 == 0:
+    if (epoch + 1) % 10 == 0:
         saved_model = load_model(MODEL_NAME)
         y_val_ = saved_model.predict(x_val)
         print("Ordering loss on val data ", ordering_loss(y_val, y_val_))
