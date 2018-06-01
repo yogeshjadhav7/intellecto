@@ -23,10 +23,13 @@ class Intellecto:
         return e_x / e_x.sum(axis=0)
 
 
-    def sigmoid(x):
-        x_ = np.divide(x, -1 * 200)
+    def sigmoid(self, x):
+        x_ = np.multiply(x, -100)
         return 1 / (1 + np.exp(x_))
 
+
+    def squashed_score(self, x):
+        return np.divide(x, 200)
 
     def one_hot_scores(self, x):
         x_oh = np.zeros(len(x), dtype=np.float64)
@@ -143,13 +146,14 @@ class Intellecto:
             else:
                 raw_moves_scores.append(move_score)
 
-        moves_score = self.softmax(raw_moves_scores)
+        probs_moves_score = self.softmax(raw_moves_scores)
+        #moves_score = self.softmax(raw_moves_scores)
         #moves_score = self.one_hot_scores(raw_moves_scores)
-        #moves_score = self.sigmoid(raw_moves_scores)
+        moves_score = self.sigmoid(raw_moves_scores)
 
         valid_move = False
         while not valid_move:
-            i = np.random.choice(len(moves_score), p=moves_score)
+            i = np.random.choice(len(probs_moves_score), p=probs_moves_score)
             valid_move, board_, queue_, raw_move_score = self.play_move(i, board, queue)
 
         return board_, queue_, moves_score, raw_move_score

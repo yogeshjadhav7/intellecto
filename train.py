@@ -74,7 +74,7 @@ input_size = ipca.n_components
 TRAIN_MODEL = True
 
 droprate = 0.7
-activation = 'relu'
+activation = 'elu'
 try:
     model = load_model(MODEL_NAME)
     print("Loaded saved model: " + MODEL_NAME)
@@ -129,7 +129,7 @@ except:
     model.add(Dense(units=32, activation=activation))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 3))
-    
+
     model.add(Dense(units=32, activation=activation))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 3))
