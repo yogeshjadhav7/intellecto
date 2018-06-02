@@ -29,7 +29,7 @@ class Intellecto:
 
 
     def squashed_score(self, x):
-        return np.divide(x, 200)
+        return np.divide(x, 9**2)
 
     def one_hot_scores(self, x):
         x_oh = np.zeros(len(x), dtype=np.float64)
@@ -149,7 +149,8 @@ class Intellecto:
         probs_moves_score = self.softmax(raw_moves_scores)
         #moves_score = self.softmax(raw_moves_scores)
         #moves_score = self.one_hot_scores(raw_moves_scores)
-        moves_score = self.sigmoid(raw_moves_scores)
+        #moves_score = self.sigmoid(raw_moves_scores)
+        moves_score = self.squashed_score(raw_moves_scores)
 
         valid_move = False
         while not valid_move:

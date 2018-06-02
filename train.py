@@ -52,7 +52,7 @@ print("\n\nGetting initial validation data...")
 x_val, y_val = get_training_data(n_games=N_VALIDATION_GAMES)
 
 
-# In[ ]:
+# In[5]:
 
 
 # MLP Classifier
@@ -138,7 +138,8 @@ except:
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 3.5))
 
-    model.add(Dense(num_classes, activation='sigmoid'))
+    #model.add(Dense(num_classes, activation='sigmoid'))
+    model.add(Dense(num_classes, activation=None))
     
     model.summary()
     
