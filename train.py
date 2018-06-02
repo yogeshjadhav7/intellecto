@@ -68,7 +68,7 @@ from keras.models import load_model
 from keras.metrics import mean_absolute_error
 
 MODEL_NAME = "intellecto.hdf5"
-batch_size = 16
+batch_size = 1
 num_classes = I.n_bubbles
 epochs = 30
 input_size = ipca.n_components
@@ -139,8 +139,8 @@ except:
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 3.5))
 
-    #model.add(Dense(num_classes, activation='sigmoid'))
-    model.add(Dense(num_classes, activation=None))
+    model.add(Dense(num_classes, activation='sigmoid'))
+    #model.add(Dense(num_classes, activation=None))
     
     model.summary()
     

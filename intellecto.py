@@ -30,7 +30,10 @@ class Intellecto:
 
 
     def squashed_score(self, x):
-        return np.divide(x, 9**2)
+        min = np.min(x)
+        x_ = np.subtract(x, min)
+        max = np.max(x_)
+        return np.divide(x_, max)
 
     def one_hot_scores(self, x):
         x_oh = np.zeros(len(x), dtype=np.float64)
