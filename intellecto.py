@@ -17,6 +17,7 @@ class Intellecto:
         self.queue_size = 30
         self.min_bubble_val = -9
         self.max_bubble_val = 9
+        self.n_diificulties = 5
 
     def softmax(self, x):
         e_x = np.exp(x - np.max(x))
@@ -127,17 +128,41 @@ class Intellecto:
         return sum(np.array(board) != None) == 0
 
 
-    def play_move(self, i, board, queue, dry_simulation=False):
-        valid_move = True
+    def is_move_valid(self, i, board):
         if self.is_game_over(board) or i < 0 or i >= len(board) or board[i] is None:
-            valid_move = False
+            return False
+
+        return True
+
+
+    def play_move(self, i, board, queue, dry_simulation=False):
+        valid_move = self.is_move_valid(i, board)
+        if not valid_move:
             return valid_move, board, queue, None
 
         move_score = self.get_move_score(i, board, queue, dry_simulation=dry_simulation)
         next_board, next_queue = self.get_next_board_state(i, board, queue)
         return valid_move, next_board, next_queue, move_score
 
-    def play_a_move_on_board(self, board, queue):
+    def choose_a_move(self, board, raw_moves_scores, difficulty=None):
+
+        if difficulty is None or difficulty > 4:
+            difficulty = 0
+
+        ordering = np.argsort(-1 * np.array(raw_moves_scores))
+        valid_ordering = []
+        n_valid_options = 0.0
+        for option in ordering:
+            valid_move = self.is_move_valid(option, board)
+            if valid_move:
+                n_valid_options += 1
+                valid_ordering.append(option)
+
+        mapping_ratio = n_valid_options / self.n_bubbles
+        mapped_difficulty = np.int(np.floor(mapping_ratio * difficulty))
+        return valid_ordering[mapped_difficulty]
+
+    def play_a_move_on_board(self, board, queue, difficulty=None):
         raw_moves_scores = []
         for i in range(len(board)):
             valid_move, _, _, move_score = self.play_move(i, board, queue)
@@ -146,27 +171,23 @@ class Intellecto:
             else:
                 raw_moves_scores.append(move_score)
 
-        probs_moves_score = self.softmax(raw_moves_scores)
         #moves_score = self.softmax(raw_moves_scores)
         #moves_score = self.one_hot_scores(raw_moves_scores)
         #moves_score = self.sigmoid(raw_moves_scores)
         moves_score = self.squashed_score(raw_moves_scores)
 
-        valid_move = False
-        while not valid_move:
-            i = np.random.choice(len(probs_moves_score), p=probs_moves_score)
-            valid_move, board_, queue_, raw_move_score = self.play_move(i, board, queue)
-
-        return board_, queue_, moves_score, raw_move_score
+        i = self.choose_a_move(board, raw_moves_scores, difficulty)
+        valid_move, board_, queue_, raw_move_score = self.play_move(i, board, queue)
+        return i, board_, queue_, moves_score, raw_move_score, raw_moves_scores
 
 
-    def play_game(self, board, queue):
+    def play_game(self, board, queue, difficulty=None):
         board_queue_moves_score_map = []
         game_over = False
         game_score = 0
         n_moves = 0
         while not game_over:
-            board_, queue_, moves_score, raw_move_score = self.play_a_move_on_board(board=board, queue=queue)
+            move, board_, queue_, moves_score, raw_move_score, raw_moves_score = self.play_a_move_on_board(board=board, queue=queue, difficulty=difficulty)
             board = board_
             queue = queue_
             board_queue_moves_score_map.append({"board": board, "queue": queue, "moves_score": moves_score})
@@ -195,7 +216,7 @@ class Intellecto:
         x = np.reshape(x, (1, x.size))
         return x
 
-    def play_episode(self, n_games=25, queue_size=None):
+    def play_episode(self, n_games=25, queue_size=None, difficulty=None):
         if queue_size is None: queue_size = self.queue_size
         x_episode = []
         y_episode = []
@@ -205,7 +226,7 @@ class Intellecto:
             y_game = []
 
             board, queue = self.reset_game(queue_size=queue_size)
-            game_info_map, game_score = self.play_game(board=board, queue=queue)
+            game_info_map, game_score = self.play_game(board=board, queue=queue, difficulty=difficulty)
             for info in game_info_map:
                 b = info['board']
                 q = info['queue']

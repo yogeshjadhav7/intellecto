@@ -6,14 +6,15 @@
 
 from intellecto import Intellecto
 import numpy as np
-from sklearn.decomposition import IncrementalPCA
 from sklearn.externals import joblib
+from challengesimulator import ChallengeSimulator
 
 N_GAMES_PER_EPISODE = 100
 N_EPISODES = 1000
-VALIDATION_REFRESH_RATE = 50
-N_VALIDATION_GAMES = N_GAMES_PER_EPISODE * VALIDATION_REFRESH_RATE
+VALIDATION_REFRESH_RATE = 100
+N_VALIDATION_GAMES = VALIDATION_REFRESH_RATE
 I = Intellecto()
+simulator = ChallengeSimulator()
 batch_size = N_GAMES_PER_EPISODE * (I.n_bubbles + I.queue_size)
 
 n_input = (I.n_bubbles + 1) * (I.n_bubbles + 2) 
@@ -148,10 +149,10 @@ except:
                   metrics=[mean_absolute_error])
 
 def do_on_epoch_end(epoch, _):
-    if (epoch + 1) % 10 == 0:
-        saved_model = load_model(MODEL_NAME)
-        y_val_ = saved_model.predict(x_val)
-        print("Ordering loss on val data ", ordering_loss(y_val, y_val_))
+    if (epoch + 1) % 5 == 0:
+        win_ratio_mean, win_ratio_per_difficulties = simulator.simulate_challenge_games(model=model, ipca=ipca)
+        print("Win ratio per difficulties", win_ratio_per_difficulties)
+        print("Win ratio mean", win_ratio_mean)
         
 callbacks_supported = [
     ModelCheckpoint(MODEL_NAME, monitor='val_loss', verbose=1, save_best_only=True, save_weights_only=False, mode='min', period=1),
