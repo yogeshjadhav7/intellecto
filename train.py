@@ -10,7 +10,7 @@ from sklearn.externals import joblib
 from challengesimulator import ChallengeSimulator
 
 N_GAMES_PER_EPISODE = 100
-N_EPISODES = 1000
+N_EPISODES = 100
 
 I = Intellecto()
 simulator = ChallengeSimulator()
@@ -66,9 +66,9 @@ from keras.models import load_model
 from keras.metrics import mean_absolute_error, categorical_crossentropy
 
 MODEL_NAME = "intellecto.hdf5"
-batch_size = I.n_bubbles
+batch_size = 1 #I.n_bubbles
 num_classes = I.n_bubbles
-epochs = 15
+epochs = 10
 input_size = ipca.n_components
 TRAIN_MODEL = True
 
@@ -175,4 +175,6 @@ if TRAIN_MODEL:
         )
         
         model = load_model(MODEL_NAME)
+        
+    print("Mean win ratio overall", np.mean(simulation_records))
 
