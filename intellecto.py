@@ -9,6 +9,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from sklearn.utils import extmath
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -21,6 +22,7 @@ class Intellecto:
         self.min_bubble_val = -9
         self.max_bubble_val = 9
         self.n_diificulties = 5
+
 
     def softmax(self, x):
         e_x = np.exp(x - np.max(x))
@@ -177,8 +179,8 @@ class Intellecto:
             else:
                 raw_moves_scores.append(move_score)
 
-        #moves_score = self.softmax(raw_moves_scores)
-        moves_score = self.one_hot_scores(raw_moves_scores)
+        moves_score = self.softmax(raw_moves_scores)
+        #moves_score = self.one_hot_scores(raw_moves_scores)
         #moves_score = self.sigmoid(raw_moves_scores)
         #moves_score = self.squashed_score(raw_moves_scores)
 
