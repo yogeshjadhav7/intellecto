@@ -9,7 +9,7 @@ import numpy as np
 from sklearn.externals import joblib
 from challengesimulator import ChallengeSimulator
 
-N_GAMES_PER_EPISODE = 25
+N_GAMES_PER_EPISODE = 100
 N_EPISODES = 1000
 
 I = Intellecto()
