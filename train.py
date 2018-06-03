@@ -10,9 +10,10 @@ from sklearn.externals import joblib
 from challengesimulator import ChallengeSimulator
 
 N_GAMES_PER_EPISODE = 100
-N_EPISODES = 1000
-VALIDATION_REFRESH_RATE = 100
-N_VALIDATION_GAMES = VALIDATION_REFRESH_RATE
+N_EPISODES = 100
+N_VALIDATION_GAMES = 100
+VALIDATION_REFRESH_RATE = 10
+
 I = Intellecto()
 simulator = ChallengeSimulator()
 batch_size = N_GAMES_PER_EPISODE * (I.n_bubbles + I.queue_size)
@@ -65,12 +66,12 @@ from keras.optimizers import Adam
 from sklearn.preprocessing import LabelBinarizer
 from keras.callbacks import ModelCheckpoint, LambdaCallback
 from keras.models import load_model
-from keras.metrics import mean_absolute_error
+from keras.metrics import mean_absolute_error, categorical_crossentropy
 
 MODEL_NAME = "intellecto.hdf5"
 batch_size = 1
 num_classes = I.n_bubbles
-epochs = 30
+epochs = 20
 input_size = ipca.n_components
 TRAIN_MODEL = True
 
@@ -95,7 +96,7 @@ except:
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 1.5))
 
-    model.add(Dense(units=256, activation=activation))
+    model.add(Dense(units=512, activation=activation))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 1.5))
     
@@ -107,7 +108,7 @@ except:
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 1.5))
 
-    model.add(Dense(units=128, activation=activation))
+    model.add(Dense(units=256, activation=activation))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 2))
     
@@ -127,7 +128,7 @@ except:
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 2.5))
     
-    model.add(Dense(units=32, activation=activation))
+    model.add(Dense(units=64, activation=activation))
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 3))
 
@@ -139,23 +140,25 @@ except:
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 3.5))
 
-    model.add(Dense(num_classes, activation='sigmoid'))
+    model.add(Dense(num_classes, activation='softmax'))
+    #model.add(Dense(num_classes, activation='sigmoid'))
     #model.add(Dense(num_classes, activation=None))
     
     model.summary()
     
-    model.compile(loss='mse',
+    model.compile(loss='categorical_crossentropy',
                   optimizer='adam',
-                  metrics=[mean_absolute_error])
+                  metrics=['accuracy'])
 
 def do_on_epoch_end(epoch, _):
     if (epoch + 1) % 5 == 0:
-        win_ratio_mean, win_ratio_per_difficulties = simulator.simulate_challenge_games(model=model, ipca=ipca)
+        saved_model = load_model(MODEL_NAME)
+        win_ratio_mean, win_ratio_per_difficulties = simulator.simulate_challenge_games(model=saved_model, ipca=ipca)
         print("Win ratio per difficulties", win_ratio_per_difficulties)
         print("Win ratio mean", win_ratio_mean)
         
 callbacks_supported = [
-    ModelCheckpoint(MODEL_NAME, monitor='val_loss', verbose=1, save_best_only=True, save_weights_only=False, mode='min', period=1),
+    ModelCheckpoint(MODEL_NAME, monitor='val_acc', verbose=0, save_best_only=True, save_weights_only=False, mode='max', period=1),
     LambdaCallback(on_epoch_end=do_on_epoch_end)
 ]
 

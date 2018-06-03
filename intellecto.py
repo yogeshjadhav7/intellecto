@@ -11,7 +11,7 @@ warnings.filterwarnings("ignore")
 
 class Intellecto:
     def __init__(self):
-        self.NONE_MOVE_SCORE = -10 * (9**3)
+        self.NONE_MOVE_SCORE = -2 * (9**3)
         self.DEPTH = 1
         self.n_bubbles = 5
         self.queue_size = 30
@@ -175,9 +175,9 @@ class Intellecto:
                 raw_moves_scores.append(move_score)
 
         #moves_score = self.softmax(raw_moves_scores)
-        #moves_score = self.one_hot_scores(raw_moves_scores)
+        moves_score = self.one_hot_scores(raw_moves_scores)
         #moves_score = self.sigmoid(raw_moves_scores)
-        moves_score = self.squashed_score(raw_moves_scores)
+        #moves_score = self.squashed_score(raw_moves_scores)
 
         i = self.choose_a_move(board, raw_moves_scores, difficulty)
         valid_move, board_, queue_, raw_move_score = self.play_move(i, board, queue)
