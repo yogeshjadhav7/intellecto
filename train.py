@@ -66,7 +66,7 @@ from keras.models import load_model
 from keras.metrics import mean_absolute_error, categorical_crossentropy
 
 MODEL_NAME = "intellecto.hdf5"
-batch_size = 1 #I.n_bubbles
+batch_size = I.n_bubbles
 num_classes = I.n_bubbles
 epochs = 10
 input_size = ipca.n_components
