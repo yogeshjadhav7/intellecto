@@ -6,6 +6,9 @@
 
 import math
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -253,3 +256,23 @@ class Intellecto:
                 y_episode = np.concatenate((y_episode, y_game), axis=0)
 
         return x_episode, y_episode
+
+    def plot(self, y_data, y_label, window=1, windowshift=1):
+        filename = y_label + "_record.pdf"
+        y_data_mean = [0]
+        index = 0
+        while True:
+            if index > len(y_data):
+                break
+
+            fr = np.int(index)
+            to = np.int(index + window)
+            w = y_data[fr:to]
+            y_data_mean.append(sum(w) * 1.0 / window)
+            index = index + windowshift
+
+        x_data = [(x+1) for x in range(len(y_data_mean))]
+        plt.plot(x_data, y_data_mean, linewidth=1)
+        plt.xlabel('Simulations')
+        plt.ylabel(y_label)
+        plt.savefig(filename)

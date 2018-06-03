@@ -20,6 +20,7 @@ n_input = (I.n_bubbles + 1) * (I.n_bubbles + 2)
 n_output = I.n_bubbles
 
 PCA_MODEL_NAME = "pca.model"
+simulation_records = []
 
 
 # In[2]:
@@ -65,13 +66,13 @@ from keras.models import load_model
 from keras.metrics import mean_absolute_error, categorical_crossentropy
 
 MODEL_NAME = "intellecto.hdf5"
-batch_size = 1
+batch_size = I.n_bubbles
 num_classes = I.n_bubbles
-epochs = 3
+epochs = 15
 input_size = ipca.n_components
 TRAIN_MODEL = True
 
-droprate = 0.7
+droprate = 0.6
 activation = 'elu'
 try:
     model = load_model(MODEL_NAME)
@@ -150,12 +151,15 @@ def do_on_epoch_end(epoch, _):
     if (epoch + 1) == epochs:
         saved_model = load_model(MODEL_NAME)
         win_ratio_mean, win_ratio_per_difficulties = simulator.simulate_challenge_games(model=saved_model, ipca=ipca)
-        print("Win ratio per difficulties", win_ratio_per_difficulties)
+        print("\nWin ratio per difficulties", win_ratio_per_difficulties)
         print("Win ratio mean", win_ratio_mean)
+        simulation_records.append(win_ratio_mean)
+        I.plot(y_data=simulation_records, y_label="win_ratio_mean")
+        
         
 if TRAIN_MODEL:
     for n_episodes in range(N_EPISODES):
-        print("\nTraining model on episode #" + str(n_episodes + 1))
+        print("\n\n\nTraining on episode #" + str(n_episodes + 1))
         x, y = get_training_data()
         model.fit(
             x, 
@@ -165,7 +169,7 @@ if TRAIN_MODEL:
             verbose=0,
             validation_data=(x, y),
             callbacks = [
-                ModelCheckpoint(MODEL_NAME, monitor='val_acc', verbose=0, save_best_only=True, save_weights_only=False, mode='max', period=1),
+                ModelCheckpoint(MODEL_NAME, monitor='val_acc', verbose=1, save_best_only=True, save_weights_only=False, mode='max', period=1),
                 LambdaCallback(on_epoch_end=do_on_epoch_end)
             ]
         )
