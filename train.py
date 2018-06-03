@@ -9,10 +9,8 @@ import numpy as np
 from sklearn.externals import joblib
 from challengesimulator import ChallengeSimulator
 
-N_GAMES_PER_EPISODE = 100
-N_EPISODES = 100
-N_VALIDATION_GAMES = 100
-VALIDATION_REFRESH_RATE = 10
+N_GAMES_PER_EPISODE = 25
+N_EPISODES = 1000
 
 I = Intellecto()
 simulator = ChallengeSimulator()
@@ -50,8 +48,6 @@ def ordering_loss(ground_truth, predictions):
 
 
 ipca = joblib.load(PCA_MODEL_NAME)
-print("\n\nGetting initial validation data...")
-x_val, y_val = get_training_data(n_games=N_VALIDATION_GAMES)
 
 
 # In[5]:
@@ -71,7 +67,7 @@ from keras.metrics import mean_absolute_error, categorical_crossentropy
 MODEL_NAME = "intellecto.hdf5"
 batch_size = 1
 num_classes = I.n_bubbles
-epochs = 20
+epochs = 3
 input_size = ipca.n_components
 TRAIN_MODEL = True
 
@@ -151,22 +147,15 @@ except:
                   metrics=['accuracy'])
 
 def do_on_epoch_end(epoch, _):
-    if (epoch + 1) % 5 == 0:
+    if (epoch + 1) == epochs:
         saved_model = load_model(MODEL_NAME)
         win_ratio_mean, win_ratio_per_difficulties = simulator.simulate_challenge_games(model=saved_model, ipca=ipca)
         print("Win ratio per difficulties", win_ratio_per_difficulties)
         print("Win ratio mean", win_ratio_mean)
         
-callbacks_supported = [
-    ModelCheckpoint(MODEL_NAME, monitor='val_acc', verbose=0, save_best_only=True, save_weights_only=False, mode='max', period=1),
-    LambdaCallback(on_epoch_end=do_on_epoch_end)
-]
-
-callbacks = callbacks_supported
-        
 if TRAIN_MODEL:
     for n_episodes in range(N_EPISODES):
-        print("\nTraining model on episode #" + str(n_episodes) + " ...")
+        print("\nTraining model on episode #" + str(n_episodes + 1))
         x, y = get_training_data()
         model.fit(
             x, 
@@ -174,11 +163,12 @@ if TRAIN_MODEL:
             batch_size=batch_size,
             epochs=epochs,
             verbose=0,
-            validation_data=(x_val, y_val),
-            callbacks = callbacks
+            validation_data=(x, y),
+            callbacks = [
+                ModelCheckpoint(MODEL_NAME, monitor='val_acc', verbose=0, save_best_only=True, save_weights_only=False, mode='max', period=1),
+                LambdaCallback(on_epoch_end=do_on_epoch_end)
+            ]
         )
         
-        if (n_episodes + 1) % VALIDATION_REFRESH_RATE == 0:
-            print("\n\nGetting new validation data...")
-            x_val, y_val = get_training_data(n_games=N_VALIDATION_GAMES)
+        model = load_model(MODEL_NAME)
 
