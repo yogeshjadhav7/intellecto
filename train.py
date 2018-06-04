@@ -52,7 +52,7 @@ def ordering_loss(ground_truth, predictions):
 ipca = joblib.load(PCA_MODEL_NAME)
 
 
-# In[5]:
+# In[ ]:
 
 
 # MLP Classifier
@@ -65,6 +65,7 @@ from sklearn.preprocessing import LabelBinarizer
 from keras.callbacks import ModelCheckpoint, LambdaCallback
 from keras.models import load_model
 from keras.metrics import mean_absolute_error, categorical_crossentropy
+from keras import backend as K
 
 MODEL_NAME = "intellecto.hdf5"
 batch_size = I.n_bubbles
@@ -74,9 +75,12 @@ input_size = ipca.n_components
 TRAIN_MODEL = True
 
 droprate = 0.6
-activation = 'elu'
+
+def activation(x):
+    return K.relu(x=x, alpha=0.5)
+
 try:
-    model = load_model(MODEL_NAME)
+    model = load_model(MODEL_NAME, custom_objects={'activation': activation})
     print("Loaded saved model: " + MODEL_NAME)
 except:
     print("Creating new model: " + MODEL_NAME)
@@ -150,7 +154,7 @@ except:
 
 def do_on_epoch_end(epoch, _):
     if (epoch + 1) == epochs:
-        saved_model = load_model(MODEL_NAME)
+        saved_model = load_model(MODEL_NAME, custom_objects={'activation': activation})
         win_ratio_mean, win_ratio_per_difficulties = simulator.simulate_challenge_games(model=saved_model, ipca=ipca)
         print("\nWin ratio per difficulties", win_ratio_per_difficulties)
         print("Win ratio mean", win_ratio_mean)
@@ -178,8 +182,8 @@ if TRAIN_MODEL:
             print("Current mean win ratio overall", np.mean(simulation_records))
             I.plot(y_data=simulation_records, y_label="win_ratio_mean", window=EPISODE_CHECKPOINT_FREQ)
             
-        model = None
-        model = load_model(MODEL_NAME)
+        del model
+        model = load_model(MODEL_NAME, custom_objects={'activation': activation})
             
     print("Final mean win ratio overall", np.mean(simulation_records))
     
