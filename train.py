@@ -174,12 +174,12 @@ if TRAIN_MODEL:
             ]
         )
         
-        del model
-        model = load_model(MODEL_NAME)
-        
         if (n_episodes + 1) % EPISODE_CHECKPOINT_FREQ == 0:
             print("Current mean win ratio overall", np.mean(simulation_records))
             I.plot(y_data=simulation_records, y_label="win_ratio_mean", window=EPISODE_CHECKPOINT_FREQ)
+            
+        model = None
+        model = load_model(MODEL_NAME)
             
     print("Final mean win ratio overall", np.mean(simulation_records))
     
