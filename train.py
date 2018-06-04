@@ -174,6 +174,7 @@ if TRAIN_MODEL:
             ]
         )
         
+        del model
         model = load_model(MODEL_NAME)
         
     print("Mean win ratio overall", np.mean(simulation_records))
