@@ -52,7 +52,7 @@ def ordering_loss(ground_truth, predictions):
 ipca = joblib.load(PCA_MODEL_NAME)
 
 
-# In[5]:
+# In[ ]:
 
 
 # MLP Classifier
@@ -138,15 +138,15 @@ except:
     model.add(BatchNormalization())
     model.add(Dropout(droprate / 3.5))
 
-    #model.add(Dense(num_classes, activation='softmax'))
+    model.add(Dense(num_classes, activation='softmax'))
     #model.add(Dense(num_classes, activation='sigmoid'))
-    model.add(Dense(num_classes, activation=None))
+    #model.add(Dense(num_classes, activation=None))
     
     model.summary()
     
-    model.compile(loss='mse',
+    model.compile(loss='categorical_crossentropy',
                   optimizer='adam',
-                  metrics=[mean_absolute_error])
+                  metrics=['accuracy'])
 
 def do_on_epoch_end(epoch, _):
     if (epoch + 1) == epochs:
@@ -169,7 +169,7 @@ if TRAIN_MODEL:
             verbose=0,
             validation_data=(x, y),
             callbacks = [
-                ModelCheckpoint(MODEL_NAME, monitor='val_loss', verbose=1, save_best_only=True, save_weights_only=False, mode='min', period=1),
+                ModelCheckpoint(MODEL_NAME, monitor='val_acc', verbose=1, save_best_only=True, save_weights_only=False, mode='max', period=1),
                 LambdaCallback(on_epoch_end=do_on_epoch_end)
             ]
         )
