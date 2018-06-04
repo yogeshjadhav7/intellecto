@@ -264,7 +264,7 @@ class Intellecto:
         y_data_mean = [0]
         index = 0
         while True:
-            if index > len(y_data):
+            if index > (len(y_data) - window):
                 break
 
             fr = np.int(index)

@@ -11,6 +11,7 @@ from challengesimulator import ChallengeSimulator
 
 N_GAMES_PER_EPISODE = 100
 N_EPISODES = 100
+EPISODE_CHECKPOINT_FREQ = 10
 
 I = Intellecto()
 simulator = ChallengeSimulator()
@@ -154,7 +155,6 @@ def do_on_epoch_end(epoch, _):
         print("\nWin ratio per difficulties", win_ratio_per_difficulties)
         print("Win ratio mean", win_ratio_mean)
         simulation_records.append(win_ratio_mean)
-        I.plot(y_data=simulation_records, y_label="win_ratio_mean")
         
         
 if TRAIN_MODEL:
@@ -177,5 +177,10 @@ if TRAIN_MODEL:
         del model
         model = load_model(MODEL_NAME)
         
-    print("Mean win ratio overall", np.mean(simulation_records))
+        if (n_episodes + 1) % EPISODE_CHECKPOINT_FREQ == 0:
+            print("Current mean win ratio overall", np.mean(simulation_records))
+            I.plot(y_data=simulation_records, y_label="win_ratio_mean", window=EPISODE_CHECKPOINT_FREQ)
+            
+    print("Final mean win ratio overall", np.mean(simulation_records))
+    
 
