@@ -51,8 +51,8 @@ def do_pca():
 
 # In[7]:
 
-
-ipca = do_pca()
-variances_ = ipca.explained_variance_ratio_.cumsum()
-print(variances_)
+def start_pca():
+    ipca = do_pca()
+    variances_ = ipca.explained_variance_ratio_.cumsum()
+    print(variances_)
 

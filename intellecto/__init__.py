@@ -1,0 +1,1 @@
+from intellecto.intellecto import Intellectofrom intellecto.pca import start_pca
