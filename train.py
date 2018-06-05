@@ -8,6 +8,8 @@ from intellecto import Intellecto
 import numpy as np
 from sklearn.externals import joblib
 from challengesimulator import ChallengeSimulator
+import gc
+import time
 
 N_GAMES_PER_EPISODE = 100
 N_EPISODES = 100
@@ -183,7 +185,10 @@ if TRAIN_MODEL:
             I.plot(y_data=simulation_records, y_label="win_ratio_mean", window=EPISODE_CHECKPOINT_FREQ)
             
         del model
+        time.sleep(10) 
+        gc.collect()
         model = load_model(MODEL_NAME, custom_objects={'activation': activation})
+        
             
     print("Final mean win ratio overall", np.mean(simulation_records))
     

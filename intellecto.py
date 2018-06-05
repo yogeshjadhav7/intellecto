@@ -35,10 +35,12 @@ class Intellecto:
 
 
     def squashed_score(self, x):
+        '''
         for x_indx in range(len(x)):
             if x[x_indx] < 0: x[x_indx] *= 0.5
+        '''
 
-        return np.divide(x, 50)
+        return np.divide(x, 10)
 
     def one_hot_scores(self, x):
         x_oh = np.zeros(len(x), dtype=np.float64)
