@@ -10,6 +10,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from sklearn.utils import extmath
+from sklearn.preprocessing import PolynomialFeatures
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -22,6 +23,7 @@ class Intellecto:
         self.min_bubble_val = -9
         self.max_bubble_val = 9
         self.n_diificulties = 5
+        self.poly = PolynomialFeatures(degree=3, include_bias=False)
 
 
     def softmax(self, x):
@@ -224,6 +226,7 @@ class Intellecto:
 
         x = np.array(x, dtype=np.float64)
         x = np.reshape(x, (1, x.size))
+        x = self.poly.fit_transform(x)
         return x
 
     def play_episode(self, n_games=25, queue_size=None, difficulty=None):
