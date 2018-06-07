@@ -10,8 +10,8 @@ from sklearn.decomposition import IncrementalPCA
 from sklearn.externals import joblib
 from sklearn.preprocessing import PolynomialFeatures
 
-N_GAMES_PER_EPISODE = 100
-N_EPISODES = 5000
+N_GAMES_PER_EPISODE = 20
+N_EPISODES = 10000
 I = Intellecto()
 batch_size = N_GAMES_PER_EPISODE * (I.n_bubbles + I.queue_size)
 
