@@ -44,10 +44,11 @@ def do_pca():
             x,_ = I.play_episode(n_games=N_GAMES_PER_EPISODE, queue_size=0)
             ipca.partial_fit(x)
 
+        joblib.dump(ipca, PCA_MODEL_NAME, protocol=2)
+        
         if n_episode > 0 and n_episode % 5 == 0:
-            joblib.dump(ipca, PCA_MODEL_NAME, protocol=2)
             variances_ = ipca.explained_variance_ratio_.cumsum()
-            print("variances", variances_)
+            print("variances", variances_[len(variances_)])
 
         gc.collect()
 
@@ -62,5 +63,5 @@ def do_pca():
 
 ipca = do_pca()
 variances_ = ipca.explained_variance_ratio_.cumsum()
-print("variances", variances_)
+print("variances", variances_[len(variances_)])
 
