@@ -81,78 +81,83 @@ droprate = 0.6
 def activation(x):
     return K.relu(x=x, alpha=0.5)
 
-try:
-    model = load_model(MODEL_NAME, custom_objects={'activation': activation})
-    print("Loaded saved model: " + MODEL_NAME)
-except:
-    print("Creating new model: " + MODEL_NAME)
-    
-    model = Sequential()
-    model.add(Dense(units=1024, activation=activation, input_shape=(input_size, )))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate))
-    
-    model.add(Dense(units=512, activation=activation))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate))
+def get_model():
+    try:
+        model = load_model(MODEL_NAME, custom_objects={'activation': activation})
+        print("Loaded saved model: " + MODEL_NAME)
+    except:
+        print("Creating new model: " + MODEL_NAME)
 
-    model.add(Dense(units=512, activation=activation))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate / 1.5))
+        model = Sequential()
+        model.add(Dense(units=1024, activation=activation, input_shape=(input_size, )))
+        model.add(BatchNormalization())
+        model.add(Dropout(droprate))
 
-    model.add(Dense(units=512, activation=activation))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate / 1.5))
-    
-    model.add(Dense(units=256, activation=activation))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate / 1.5))
-    
-    model.add(Dense(units=256, activation=activation))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate / 1.5))
+        model.add(Dense(units=512, activation=activation))
+        model.add(BatchNormalization())
+        model.add(Dropout(droprate))
 
-    model.add(Dense(units=256, activation=activation))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate / 2))
-    
-    model.add(Dense(units=128, activation=activation))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate / 2))
-    
-    model.add(Dense(units=128, activation=activation))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate / 2))
+        model.add(Dense(units=512, activation=activation))
+        model.add(BatchNormalization())
+        model.add(Dropout(droprate / 1.5))
 
-    model.add(Dense(units=64, activation=activation))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate / 2))
-    
-    model.add(Dense(units=64, activation=activation))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate / 2.5))
-    
-    model.add(Dense(units=64, activation=activation))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate / 3))
+        model.add(Dense(units=512, activation=activation))
+        model.add(BatchNormalization())
+        model.add(Dropout(droprate / 1.5))
 
-    model.add(Dense(units=32, activation=activation))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate / 3))
-    
-    model.add(Dense(units=16, activation=activation))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate / 3.5))
+        model.add(Dense(units=256, activation=activation))
+        model.add(BatchNormalization())
+        model.add(Dropout(droprate / 1.5))
 
-    #model.add(Dense(num_classes, activation='softmax'))
-    #model.add(Dense(num_classes, activation='sigmoid'))
-    model.add(Dense(num_classes, activation=None))
-    
-    model.summary()
-    
-    model.compile(loss='mse',
-                  optimizer='adam',
-                  metrics=[mean_absolute_error])
+        model.add(Dense(units=256, activation=activation))
+        model.add(BatchNormalization())
+        model.add(Dropout(droprate / 1.5))
+
+        model.add(Dense(units=256, activation=activation))
+        model.add(BatchNormalization())
+        model.add(Dropout(droprate / 2))
+
+        model.add(Dense(units=128, activation=activation))
+        model.add(BatchNormalization())
+        model.add(Dropout(droprate / 2))
+
+        model.add(Dense(units=128, activation=activation))
+        model.add(BatchNormalization())
+        model.add(Dropout(droprate / 2))
+
+        model.add(Dense(units=64, activation=activation))
+        model.add(BatchNormalization())
+        model.add(Dropout(droprate / 2))
+
+        model.add(Dense(units=64, activation=activation))
+        model.add(BatchNormalization())
+        model.add(Dropout(droprate / 2.5))
+
+        model.add(Dense(units=64, activation=activation))
+        model.add(BatchNormalization())
+        model.add(Dropout(droprate / 3))
+
+        model.add(Dense(units=32, activation=activation))
+        model.add(BatchNormalization())
+        model.add(Dropout(droprate / 3))
+
+        model.add(Dense(units=16, activation=activation))
+        model.add(BatchNormalization())
+        model.add(Dropout(droprate / 3.5))
+
+        #model.add(Dense(num_classes, activation='softmax'))
+        #model.add(Dense(num_classes, activation='sigmoid'))
+        model.add(Dense(num_classes, activation=None))
+
+        model.summary()
+
+        model.compile(loss='mse',
+                      optimizer='adam',
+                      metrics=[mean_absolute_error])
+        
+    return model
+
+
 
 def do_on_epoch_end(epoch, _):
     if (epoch + 1) == epochs:
@@ -165,8 +170,9 @@ def do_on_epoch_end(epoch, _):
         
 if TRAIN_MODEL:
     for n_episodes in range(N_EPISODES):
-        print("\n\n\nTraining on episode #" + str(n_episodes + 1))
         x, y = get_training_data()
+        print("\n\n\nTraining on episode #" + str(n_episodes + 1))
+        model = get_model()
         model.fit(
             x, 
             y,
@@ -184,10 +190,8 @@ if TRAIN_MODEL:
             print("Current mean win ratio overall", np.mean(simulation_records))
             I.plot(y_data=simulation_records, y_label="win_ratio_mean", window=EPISODE_CHECKPOINT_FREQ)
             
-        del model
-        time.sleep(10) 
+        model = None
         gc.collect()
-        model = load_model(MODEL_NAME, custom_objects={'activation': activation})
         
             
     print("Final mean win ratio overall", np.mean(simulation_records))
