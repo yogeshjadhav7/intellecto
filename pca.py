@@ -9,9 +9,10 @@ import numpy as np
 from sklearn.decomposition import IncrementalPCA
 from sklearn.externals import joblib
 from sklearn.preprocessing import PolynomialFeatures
+import gc
 
-N_GAMES_PER_EPISODE = 20
-N_EPISODES = 10000
+N_GAMES_PER_EPISODE = 200
+N_EPISODES = 1000
 I = Intellecto()
 batch_size = N_GAMES_PER_EPISODE * (I.n_bubbles + I.queue_size)
 
@@ -43,7 +44,13 @@ def do_pca():
             x,_ = I.play_episode(n_games=N_GAMES_PER_EPISODE, queue_size=0)
             ipca.partial_fit(x)
 
-        if n_episode > 0 and n_episode % 100 == 0: joblib.dump(ipca, PCA_MODEL_NAME, protocol=2)
+        if n_episode > 0 and n_episode % 5 == 0:
+            joblib.dump(ipca, PCA_MODEL_NAME, protocol=2)
+            variances_ = ipca.explained_variance_ratio_.cumsum()
+            print("variances", variances_)
+
+        gc.collect()
+
     
     print("Saving the pca model...")
     joblib.dump(ipca, PCA_MODEL_NAME, protocol=2)
@@ -55,5 +62,5 @@ def do_pca():
 
 ipca = do_pca()
 variances_ = ipca.explained_variance_ratio_.cumsum()
-print(variances_)
+print("variances", variances_)
 
