@@ -8,6 +8,7 @@ from intellecto import Intellecto
 import numpy as np
 from sklearn.externals import joblib
 from challengesimulator import ChallengeSimulator
+import gc
 
 N_GAMES_PER_EPISODE = 100
 N_EPISODES = 100
@@ -29,7 +30,7 @@ simulation_records = []
 
 def get_training_data(n_games=N_GAMES_PER_EPISODE):
     f, l = I.play_episode(n_games=n_games)
-    f = ipca.transform(f)
+    #f = ipca.transform(f)
     return f, l
 
 
@@ -49,10 +50,10 @@ def ordering_loss(ground_truth, predictions):
 # In[4]:
 
 
-ipca = joblib.load(PCA_MODEL_NAME)
+ipca = None #joblib.load(PCA_MODEL_NAME)
 
 
-# In[ ]:
+# In[5]:
 
 
 # MLP Classifier
@@ -67,86 +68,90 @@ from keras.models import load_model
 from keras.metrics import mean_absolute_error, categorical_crossentropy
 
 MODEL_NAME = "intellecto.hdf5"
-batch_size = I.n_bubbles
+batch_size = 16 #I.n_bubbles
 num_classes = I.n_bubbles
 epochs = 10
-input_size = ipca.n_components
+input_size = n_input #ipca.n_components
 TRAIN_MODEL = True
 
 droprate = 0.6
 activation = 'elu'
-try:
-    model = load_model(MODEL_NAME)
-    print("Loaded saved model: " + MODEL_NAME)
-except:
-    print("Creating new model: " + MODEL_NAME)
-    
-    model = Sequential()
-    model.add(Dense(units=1024, activation=activation, input_shape=(input_size, )))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate))
-    
-    model.add(Dense(units=512, activation=activation))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate))
 
-    model.add(Dense(units=512, activation=activation))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate / 1.5))
+def getmodel():
+    try:
+        model = load_model(MODEL_NAME)
+        #print("Loaded saved model: " + MODEL_NAME)
+    except:
+        print("Creating new model: " + MODEL_NAME)
 
-    model.add(Dense(units=512, activation=activation))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate / 1.5))
-    
-    model.add(Dense(units=256, activation=activation))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate / 1.5))
-    
-    model.add(Dense(units=256, activation=activation))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate / 1.5))
+        model = Sequential()
+        model.add(Dense(units=1024, activation=activation, input_shape=(input_size, )))
+        model.add(BatchNormalization())
+        model.add(Dropout(droprate))
 
-    model.add(Dense(units=256, activation=activation))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate / 2))
-    
-    model.add(Dense(units=128, activation=activation))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate / 2))
-    
-    model.add(Dense(units=128, activation=activation))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate / 2))
+        model.add(Dense(units=512, activation=activation))
+        model.add(BatchNormalization())
+        model.add(Dropout(droprate))
 
-    model.add(Dense(units=64, activation=activation))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate / 2))
-    
-    model.add(Dense(units=64, activation=activation))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate / 2.5))
-    
-    model.add(Dense(units=64, activation=activation))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate / 3))
+        model.add(Dense(units=512, activation=activation))
+        model.add(BatchNormalization())
+        model.add(Dropout(droprate / 1.5))
 
-    model.add(Dense(units=32, activation=activation))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate / 3))
-    
-    model.add(Dense(units=16, activation=activation))
-    model.add(BatchNormalization())
-    model.add(Dropout(droprate / 3.5))
+        model.add(Dense(units=512, activation=activation))
+        model.add(BatchNormalization())
+        model.add(Dropout(droprate / 1.5))
 
-    model.add(Dense(num_classes, activation='softmax'))
-    #model.add(Dense(num_classes, activation='sigmoid'))
-    #model.add(Dense(num_classes, activation=None))
+        model.add(Dense(units=256, activation=activation))
+        model.add(BatchNormalization())
+        model.add(Dropout(droprate / 1.5))
+
+        model.add(Dense(units=256, activation=activation))
+        model.add(BatchNormalization())
+        model.add(Dropout(droprate / 1.5))
+
+        model.add(Dense(units=256, activation=activation))
+        model.add(BatchNormalization())
+        model.add(Dropout(droprate / 2))
+
+        model.add(Dense(units=128, activation=activation))
+        model.add(BatchNormalization())
+        model.add(Dropout(droprate / 2))
+
+        model.add(Dense(units=128, activation=activation))
+        model.add(BatchNormalization())
+        model.add(Dropout(droprate / 2))
+
+        model.add(Dense(units=64, activation=activation))
+        model.add(BatchNormalization())
+        model.add(Dropout(droprate / 2))
+
+        model.add(Dense(units=64, activation=activation))
+        model.add(BatchNormalization())
+        model.add(Dropout(droprate / 2.5))
+
+        model.add(Dense(units=64, activation=activation))
+        model.add(BatchNormalization())
+        model.add(Dropout(droprate / 3))
+
+        model.add(Dense(units=32, activation=activation))
+        model.add(BatchNormalization())
+        model.add(Dropout(droprate / 3))
+
+        model.add(Dense(units=16, activation=activation))
+        model.add(BatchNormalization())
+        model.add(Dropout(droprate / 3.5))
+
+        model.add(Dense(num_classes, activation='softmax'))
+        #model.add(Dense(num_classes, activation='sigmoid'))
+        #model.add(Dense(num_classes, activation=None))
+
+        model.summary()
+
+        model.compile(loss='categorical_crossentropy',
+                      optimizer='adam',
+                      metrics=['accuracy'])
     
-    model.summary()
-    
-    model.compile(loss='categorical_crossentropy',
-                  optimizer='adam',
-                  metrics=['accuracy'])
+    return model
 
 def do_on_epoch_end(epoch, _):
     if (epoch + 1) == epochs:
@@ -159,8 +164,9 @@ def do_on_epoch_end(epoch, _):
         
 if TRAIN_MODEL:
     for n_episodes in range(N_EPISODES):
-        print("\n\n\nTraining on episode #" + str(n_episodes + 1))
         x, y = get_training_data()
+        model = getmodel()
+        print("\n\n\nTraining on episode #" + str(n_episodes + 1))
         model.fit(
             x, 
             y,
@@ -179,7 +185,7 @@ if TRAIN_MODEL:
             I.plot(y_data=simulation_records, y_label="win_ratio_mean", window=EPISODE_CHECKPOINT_FREQ)
             
         model = None
-        model = load_model(MODEL_NAME)
+        gc.collect()
             
     print("Final mean win ratio overall", np.mean(simulation_records))
     
