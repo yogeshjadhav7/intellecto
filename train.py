@@ -11,7 +11,7 @@ from challengesimulator import ChallengeSimulator
 import gc
 from keras import backend as K
 
-N_GAMES_PER_EPISODE = 5000
+N_GAMES_PER_EPISODE = 1000
 N_EPISODES = 30
 EPISODE_CHECKPOINT_FREQ = 5
 
