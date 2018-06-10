@@ -11,9 +11,9 @@ from challengesimulator import ChallengeSimulator
 import gc
 from keras import backend as K
 
-N_GAMES_PER_EPISODE = 100
-N_EPISODES = 100
-EPISODE_CHECKPOINT_FREQ = 10
+N_GAMES_PER_EPISODE = 5000
+N_EPISODES = 30
+EPISODE_CHECKPOINT_FREQ = 5
 
 I = Intellecto()
 simulator = ChallengeSimulator()
