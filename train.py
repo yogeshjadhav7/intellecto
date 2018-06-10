@@ -9,6 +9,7 @@ import numpy as np
 from sklearn.externals import joblib
 from challengesimulator import ChallengeSimulator
 import gc
+from keras import backend as K
 
 N_GAMES_PER_EPISODE = 100
 N_EPISODES = 100
@@ -175,7 +176,7 @@ if TRAIN_MODEL:
             verbose=0,
             validation_data=(x, y),
             callbacks = [
-                ModelCheckpoint(MODEL_NAME, monitor='val_acc', verbose=1, save_best_only=True, save_weights_only=False, mode='max', period=1),
+                ModelCheckpoint(MODEL_NAME, monitor='val_acc', verbose=0, save_best_only=True, save_weights_only=False, mode='max', period=1),
                 LambdaCallback(on_epoch_end=do_on_epoch_end)
             ]
         )
@@ -186,6 +187,7 @@ if TRAIN_MODEL:
             
         model = None
         gc.collect()
+        K.clear_session()
             
     print("Final mean win ratio overall", np.mean(simulation_records))
     
