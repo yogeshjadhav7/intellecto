@@ -11,7 +11,7 @@ from challengesimulator import ChallengeSimulator
 import gc
 from keras import backend as K
 
-N_GAMES_PER_EPISODE = 1000
+N_GAMES_PER_EPISODE = 2500
 N_EPISODES = 30
 EPISODE_CHECKPOINT_FREQ = 5
 
@@ -73,7 +73,7 @@ batch_size = 16 #I.n_bubbles
 num_classes = I.n_bubbles
 epochs = 10
 input_size = n_input #ipca.n_components
-TRAIN_MODEL = True
+TRAIN_MODEL = False
 
 droprate = 0.6
 activation = 'elu'
@@ -158,8 +158,10 @@ def do_on_epoch_end(epoch, _):
     if (epoch + 1) == epochs:
         saved_model = load_model(MODEL_NAME)
         win_ratio_mean, win_ratio_per_difficulties = simulator.simulate_challenge_games(model=saved_model, ipca=ipca)
-        print("\nWin ratio per difficulties", win_ratio_per_difficulties)
+        print("\n\nWin ratio per difficulties", win_ratio_per_difficulties)
         print("Win ratio mean", win_ratio_mean)
+        orderingloss = ordering_loss(ground_truth=y, predictions=saved_model.predict(x))
+        print("Ordering loss", orderingloss)
         simulation_records.append(win_ratio_mean)
         
         
@@ -182,13 +184,13 @@ if TRAIN_MODEL:
         )
         
         if (n_episodes + 1) % EPISODE_CHECKPOINT_FREQ == 0:
-            print("Current mean win ratio overall", np.mean(simulation_records))
+            print("\nCurrent mean win ratio overall", np.mean(simulation_records))
             I.plot(y_data=simulation_records, y_label="win_ratio_mean", window=EPISODE_CHECKPOINT_FREQ)
             
         model = None
         gc.collect()
         K.clear_session()
             
-    print("Final mean win ratio overall", np.mean(simulation_records))
+    print("\nFinal mean win ratio overall", np.mean(simulation_records))
     
 
