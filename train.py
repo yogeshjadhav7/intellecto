@@ -73,7 +73,7 @@ batch_size = 16 #I.n_bubbles
 num_classes = I.n_bubbles
 epochs = 10
 input_size = n_input #ipca.n_components
-TRAIN_MODEL = False
+TRAIN_MODEL = True
 
 droprate = 0.6
 activation = 'elu'
