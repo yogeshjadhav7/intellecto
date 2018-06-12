@@ -43,9 +43,9 @@ def ordering_loss(ground_truth, predictions):
     y_ = np.array(predictions)
     y = np.argsort(y, axis=1)
     y_ = np.argsort(y_, axis=1)
-    diff_y = np.abs(np.subtract(y, y_))
+    diff_y = np.equal(y, y_)
     loss_array = np.sum(diff_y, axis=1)
-    return np.median(loss_array) / 12.0
+    return np.mean(loss_array)
 
 
 # In[4]:
