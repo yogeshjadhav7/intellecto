@@ -37,11 +37,6 @@ class Intellecto:
 
 
     def squashed_score(self, x):
-        '''
-        for x_indx in range(len(x)):
-            if x[x_indx] < 0: x[x_indx] *= 0.5
-        '''
-
         return np.divide(x, 100)
 
     def one_hot_scores(self, x):
@@ -232,7 +227,6 @@ class Intellecto:
 
         x = np.array(x, dtype=np.float64)
         x = np.reshape(x, (1, x.size))
-        x = self.poly.fit_transform(x)
         return x
 
 
