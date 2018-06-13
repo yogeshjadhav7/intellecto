@@ -9,11 +9,11 @@ import numpy as np
 from sklearn.externals import joblib
 from challengesimulator import ChallengeSimulator
 import gc
-import time
+from keras import backend as K
 
-N_GAMES_PER_EPISODE = 100
-N_EPISODES = 100
-EPISODE_CHECKPOINT_FREQ = 10
+N_GAMES_PER_EPISODE = 2500
+N_EPISODES = 30
+EPISODE_CHECKPOINT_FREQ = 5
 
 I = Intellecto()
 simulator = ChallengeSimulator()
@@ -31,7 +31,7 @@ simulation_records = []
 
 def get_training_data(n_games=N_GAMES_PER_EPISODE):
     f, l = I.play_episode(n_games=n_games)
-    f = ipca.transform(f)
+    #f = ipca.transform(f)
     return f, l
 
 
@@ -43,15 +43,15 @@ def ordering_loss(ground_truth, predictions):
     y_ = np.array(predictions)
     y = np.argsort(y, axis=1)
     y_ = np.argsort(y_, axis=1)
-    diff_y = np.abs(np.subtract(y, y_))
+    diff_y = np.equal(y, y_)
     loss_array = np.sum(diff_y, axis=1)
-    return np.median(loss_array) / 12.0
+    return np.mean(loss_array)
 
 
 # In[4]:
 
 
-ipca = joblib.load(PCA_MODEL_NAME)
+ipca = None #joblib.load(PCA_MODEL_NAME)
 
 
 # In[ ]:
@@ -67,13 +67,12 @@ from sklearn.preprocessing import LabelBinarizer
 from keras.callbacks import ModelCheckpoint, LambdaCallback
 from keras.models import load_model
 from keras.metrics import mean_absolute_error, categorical_crossentropy
-from keras import backend as K
 
 MODEL_NAME = "intellecto.hdf5"
-batch_size = I.n_bubbles
+batch_size = 16 #I.n_bubbles
 num_classes = I.n_bubbles
 epochs = 10
-input_size = ipca.n_components
+input_size = n_input #ipca.n_components
 TRAIN_MODEL = True
 
 droprate = 0.6
@@ -81,10 +80,10 @@ droprate = 0.6
 def activation(x):
     return K.relu(x=x, alpha=0.5)
 
-def get_model():
+def getmodel():
     try:
         model = load_model(MODEL_NAME, custom_objects={'activation': activation})
-        print("Loaded saved model: " + MODEL_NAME)
+        #print("Loaded saved model: " + MODEL_NAME)
     except:
         print("Creating new model: " + MODEL_NAME)
 
@@ -163,16 +162,19 @@ def do_on_epoch_end(epoch, _):
     if (epoch + 1) == epochs:
         saved_model = load_model(MODEL_NAME, custom_objects={'activation': activation})
         win_ratio_mean, win_ratio_per_difficulties = simulator.simulate_challenge_games(model=saved_model, ipca=ipca)
-        print("\nWin ratio per difficulties", win_ratio_per_difficulties)
+        print("\n\nWin ratio per difficulties", win_ratio_per_difficulties)
         print("Win ratio mean", win_ratio_mean)
+        orderingloss = ordering_loss(ground_truth=y, predictions=saved_model.predict(x))
+        print("Ordering loss", orderingloss)
         simulation_records.append(win_ratio_mean)
         
         
+
 if TRAIN_MODEL:
     for n_episodes in range(N_EPISODES):
         x, y = get_training_data()
+        model = getmodel()
         print("\n\n\nTraining on episode #" + str(n_episodes + 1))
-        model = get_model()
         model.fit(
             x, 
             y,
@@ -181,19 +183,19 @@ if TRAIN_MODEL:
             verbose=0,
             validation_data=(x, y),
             callbacks = [
-                ModelCheckpoint(MODEL_NAME, monitor='val_loss', verbose=1, save_best_only=True, save_weights_only=False, mode='min', period=1),
+                ModelCheckpoint(MODEL_NAME, monitor='val_acc', verbose=0, save_best_only=True, save_weights_only=False, mode='max', period=1),
                 LambdaCallback(on_epoch_end=do_on_epoch_end)
             ]
         )
         
         if (n_episodes + 1) % EPISODE_CHECKPOINT_FREQ == 0:
-            print("Current mean win ratio overall", np.mean(simulation_records))
+            print("\nCurrent mean win ratio overall", np.mean(simulation_records))
             I.plot(y_data=simulation_records, y_label="win_ratio_mean", window=EPISODE_CHECKPOINT_FREQ)
             
         model = None
         gc.collect()
-        
+        K.clear_session()
             
-    print("Final mean win ratio overall", np.mean(simulation_records))
+    print("\nFinal mean win ratio overall", np.mean(simulation_records))
     
 

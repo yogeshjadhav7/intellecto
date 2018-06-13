@@ -42,12 +42,16 @@ class Intellecto:
             if x[x_indx] < 0: x[x_indx] *= 0.5
         '''
 
-        return np.divide(x, 10)
+        return np.divide(x, 100)
 
     def one_hot_scores(self, x):
         x_oh = np.zeros(len(x), dtype=np.float64)
         x_oh[np.argmax(x)] = 1
         return x_oh
+
+
+    def categorize(self, x):
+        return np.array([np.argmax(x)], dtype=np.int)
 
 
     def reset_game(self, queue_size=None):
@@ -187,6 +191,7 @@ class Intellecto:
         #moves_score = self.one_hot_scores(raw_moves_scores)
         #moves_score = self.sigmoid(raw_moves_scores)
         moves_score = self.squashed_score(raw_moves_scores)
+        #moves_score = self.categorize(raw_moves_scores)
 
         i = self.choose_a_move(board, raw_moves_scores, difficulty)
         valid_move, board_, queue_, raw_move_score = self.play_move(i, board, queue)
@@ -209,6 +214,7 @@ class Intellecto:
 
         return board_queue_moves_score_map, game_score
 
+
     def one_hot_board(self, b, q):
         board = b[:]
         queue = q[:]
@@ -220,7 +226,7 @@ class Intellecto:
             f = np.zeros((len(board) + 1), dtype=np.float64)
             if board[i] is not None:
                 f[i] = 1
-                f[len(board)] = board[i]
+                f[len(board)] = board[i] * 0.1
 
             x.append(f)
 
@@ -228,6 +234,7 @@ class Intellecto:
         x = np.reshape(x, (1, x.size))
         x = self.poly.fit_transform(x)
         return x
+
 
     def play_episode(self, n_games=25, queue_size=None, difficulty=None):
         if queue_size is None: queue_size = self.queue_size
