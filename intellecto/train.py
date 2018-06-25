@@ -48,13 +48,13 @@ def ordering_loss(ground_truth, predictions):
     return np.mean(loss_array)
 
 
-# In[4]:
+# In[ ]:
 
 
 ipca = None #joblib.load(PCA_MODEL_NAME)
 
 
-# In[5]:
+# In[ ]:
 
 
 # MLP Classifier
@@ -73,7 +73,7 @@ batch_size = 16 #I.n_bubbles
 num_classes = I.n_bubbles
 epochs = 10
 input_size = n_input #ipca.n_components
-TRAIN_MODEL = True
+TRAIN_MODEL = False
 
 droprate = 0.6
 activation = 'elu'
@@ -143,8 +143,6 @@ def getmodel():
         model.add(Dropout(droprate / 3.5))
 
         model.add(Dense(num_classes, activation='softmax'))
-        #model.add(Dense(num_classes, activation='sigmoid'))
-        #model.add(Dense(num_classes, activation=None))
 
         model.summary()
 
@@ -154,13 +152,22 @@ def getmodel():
     
     return model
 
+
+def validation_model(games_per_difficulty=100):
+        x_val, y_val = get_training_data(n_games=100)
+        saved_model = load_model(MODEL_NAME)
+        orderingloss = ordering_loss(ground_truth=y_val, predictions=saved_model.predict(x_val))
+        win_ratio_mean, win_ratio_per_difficulties = simulator.simulate_challenge_games(model=saved_model, ipca=ipca, 
+                                                                                        games_per_difficulty=games_per_difficulty)
+        
+        return win_ratio_mean, win_ratio_per_difficulties, orderingloss
+        
+        
 def do_on_epoch_end(epoch, _):
     if (epoch + 1) == epochs:
-        saved_model = load_model(MODEL_NAME)
-        win_ratio_mean, win_ratio_per_difficulties = simulator.simulate_challenge_games(model=saved_model, ipca=ipca)
+        win_ratio_mean, win_ratio_per_difficulties, orderingloss = validation_model()
         print("\n\nWin ratio per difficulties", win_ratio_per_difficulties)
         print("Win ratio mean", win_ratio_mean)
-        orderingloss = ordering_loss(ground_truth=y, predictions=saved_model.predict(x))
         print("Ordering loss", orderingloss)
         simulation_records.append(win_ratio_mean)
         
@@ -193,4 +200,13 @@ if TRAIN_MODEL:
             
     print("\nFinal mean win ratio overall", np.mean(simulation_records))
     
+else:
+    
+    for n_val in range(10):
+        print("\n\nValidation Run #" + str(n_val + 1))
+        win_ratio_mean, win_ratio_per_difficulties, orderingloss = validation_model()
+        print("Win ratio per difficulties", win_ratio_per_difficulties)
+        print("Win ratio mean", win_ratio_mean)
+        print("Ordering loss", orderingloss)
+        
 
