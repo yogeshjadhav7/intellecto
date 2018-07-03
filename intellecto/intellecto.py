@@ -11,6 +11,13 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from sklearn.utils import extmath
 from sklearn.preprocessing import PolynomialFeatures
+from keras.models import load_model
+import json
+import os
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.base import clone
+from sklearn.model_selection import GridSearchCV
+from sklearn.externals import joblib
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -26,6 +33,19 @@ class Intellecto:
         self.poly = PolynomialFeatures(degree=3, include_bias=False)
 
 
+    def _build_model_path(self, userId, dir="intellecto_service/saved_models/", one_hot=True):
+        model_name = str(userId)
+        if one_hot: model_name = model_name + ".pkl"
+        else: model_name = model_name + ".hdf5"
+        return dir + model_name
+
+
+    def get_saved_model(self, userId, dir="intellecto_service/saved_models/", one_hot=True):
+        model_path = self._build_model_path(userId=userId, dir=dir, one_hot=one_hot)
+        if one_hot: return joblib.load(model_path)
+        else: return load_model(model_path)
+
+
     def softmax(self, x):
         e_x = np.exp(x - np.max(x))
         return e_x / e_x.sum(axis=0)
@@ -38,6 +58,7 @@ class Intellecto:
 
     def squashed_score(self, x):
         return np.divide(x, 10)
+
 
     def one_hot_scores(self, x):
         x_oh = np.zeros(len(x), dtype=np.float64)
@@ -142,9 +163,12 @@ class Intellecto:
     def is_move_valid(self, i, board):
         if self.is_game_over(board) or i < 0 or i >= len(board) or board[i] is None:
             return False
-
         return True
 
+    def validity_of_moves(self, board):
+        validity = []
+        for i in range(len(board)): validity.append(self.is_move_valid(i=i, board=board))
+        return np.array([validity]) * 1
 
     def play_move(self, i, board, queue, dry_simulation=False):
         valid_move = self.is_move_valid(i, board)
@@ -210,6 +234,10 @@ class Intellecto:
         return board_queue_moves_score_map, game_score
 
 
+    def prediction_method(self, model, x, one_hot=True):
+        if one_hot: return model.predict_proba(x)
+        return model.predict(x)
+
     def one_hot_board(self, b, q):
         board = b[:]
         queue = q[:]
@@ -228,6 +256,222 @@ class Intellecto:
         x = np.array(x, dtype=np.float64)
         x = np.reshape(x, (1, x.size))
         return x
+
+    def parse_game_state_str(self, game_state_str):
+        game_state = game_state_str.split(',')
+        size = len(game_state)
+        itr = 0
+        b = []
+        q = []
+        while itr < size:
+            if game_state[itr] == '#':
+                val = None
+            else:
+                val = int(game_state[itr])
+            if itr < 5:
+                b.append(val)
+            else:
+                q.append(val)
+            itr += 1
+
+        return b, q
+
+    def _get_cv_parameters_range(self, n_trees, prev_best_parameters=None, prev_parameters_config=None):
+        params = ['max_depth', 'min_samples_split', 'min_samples_leaf']
+        parameters_range = {}
+        if prev_best_parameters is None:
+            parameters_range[params[0]] = [1, 2 ** n_trees]
+            parameters_range[params[1]] = [2, 2 ** n_trees]
+            parameters_range[params[2]] = [1, 2 ** n_trees]
+
+        else:
+            for param in params:
+                best_parameter_value = prev_best_parameters[param]
+                prev_parameter_config = prev_parameters_config[param]
+                index = prev_parameter_config.index(best_parameter_value)
+                size = len(prev_parameter_config)
+                if size == 1:
+                    parameters_range[param] = [best_parameter_value, best_parameter_value]
+                    continue
+
+                if index == 0:
+                    start = best_parameter_value
+                    end = prev_parameter_config[index + 1] - 1
+                    if start >= end: end = start
+                    parameters_range[param] = [start, end]
+                    continue
+
+                if index == size - 1:
+                    end = best_parameter_value
+                    start = prev_parameter_config[index - 1] + 1
+                    if start >= end: start = end
+                    parameters_range[param] = [start, end]
+                    continue
+
+                start = prev_parameter_config[index - 1] + 1
+                end = prev_parameter_config[index + 1] - 1
+                if start >= end:
+                    start = best_parameter_value
+                    end = best_parameter_value
+
+                parameters_range[param] = [start, end]
+
+        return params, parameters_range
+
+    def cross_validate_and_fit(self, x, y, verbose=0):
+        count = len(x)
+        base_n_trees = 32 #128
+        n_trees = 2 ** (int(np.log2(count + 1) / np.log2(6)))
+        n_cv = max(2, int(count / (100)))
+
+        if verbose == 1:
+            print("n_trees", n_trees)
+            print("n_cv", n_cv)
+            print("count", count)
+
+        rf_clf = None
+        prev_best_parameters = None
+        prev_parameters_config = None
+
+        while True:
+            terminate = True
+            params, parameters_range = self._get_cv_parameters_range(n_trees=n_trees, prev_best_parameters=prev_best_parameters,
+                                                            prev_parameters_config=prev_parameters_config)
+
+            for param in params:
+                parameter_range = parameters_range[param]
+                if parameter_range[0] != parameter_range[1]: terminate = False
+
+            if terminate: break
+
+            if verbose == 1:
+                print("\n\n")
+                print("parameters_range", parameters_range)
+
+            parameters_config = {}
+            for param in params:
+                parameter_range = parameters_range[param]
+                if prev_best_parameters is not None:
+                    best_parameter_val = prev_best_parameters[param]
+                else:
+                    best_parameter_val = None
+                best_parameter_added = False
+                start = parameter_range[0]
+                end = parameter_range[1]
+                val = [start]
+                if start < end:
+                    c = 0
+                    while True:
+                        v = start + (2 ** c)
+                        if v >= end: break
+                        if best_parameter_val is not None and best_parameter_val == v: best_parameter_added = True
+                        if best_parameter_val is not None and best_parameter_val < v and not best_parameter_added:
+                            val.append(best_parameter_val)
+                            best_parameter_added = True
+
+                        val.append(v)
+                        c += 1
+
+                    val.append(end)
+
+                parameters_config[param] = val
+
+            if verbose == 1: print("parameters_config", parameters_config)
+
+            clf = GridSearchCV(estimator=RandomForestClassifier(random_state=42,
+                                                                n_estimators=base_n_trees + n_trees,
+                                                                oob_score=True,
+                                                                class_weight="balanced_subsample"),
+                               param_grid=parameters_config,
+                               cv=n_cv,
+                               verbose=verbose,
+                               n_jobs=8)
+
+            clf.fit(x, y)
+            prev_best_parameters = clf.best_params_
+            prev_parameters_config = parameters_config
+            rf_clf = clf.best_estimator_
+            clf = None
+
+        print("Best Parameters: ", prev_best_parameters)
+        print("Training Score: ", rf_clf.score(x, y))
+        return rf_clf, prev_best_parameters
+
+
+    def save_model(self, model, userId, dir="intellecto_service/saved_models/"):
+        if userId is None or dir is None or model is None: return None
+        model_path = self._build_model_path(userId=userId, dir=dir)
+
+        try:
+            joblib.dump(model, model_path, protocol=2)
+            return model_path
+        except:
+            return None
+
+
+    def load_model(self, model_path):
+        try: return joblib.load(model_path)
+        except: return None
+
+
+    def train_model(self, features, labels, verbose=0):
+        model, _ = self.cross_validate_and_fit(x=features, y=labels, verbose=verbose)
+        return model
+
+
+    def train(self, behaviourList, one_hot=True, verbose=0):
+        X = []
+        Y = []
+
+        for behaviour in behaviourList:
+            game_state_str = behaviour['gameState']
+            b, q = self.parse_game_state_str(game_state_str=game_state_str)
+            x = self.one_hot_board(b=b, q=q)
+            user_response = behaviour['userResponse']
+            if not one_hot:
+                y = np.zeros((1,self.n_bubbles), dtype=np.int)
+                y[user_response] = 1
+            else:
+                y = np.zeros((1,1), dtype=np.int)
+                y[0] = user_response
+
+            if len(X) == 0:
+                X = x
+                Y = y
+            else:
+                X = np.concatenate((X, x), axis=0)
+                Y = np.concatenate((Y, y), axis=0)
+
+        model = self.train_model(features=X, labels=Y, verbose=verbose)
+        return model
+
+    def predict(self, behaviourMap, saved_model, one_hot=True):
+        game_state_strs = list(behaviourMap.keys())
+        size = len(game_state_strs)
+        X = []
+        X_valid = []
+        for game_state_str in game_state_strs:
+            b, q = self.parse_game_state_str(game_state_str=game_state_str)
+            x = self.one_hot_board(b=b, q=q)
+            if len(X) == 0: X = x
+            else: X = np.concatenate((X, x), axis=0)
+
+            x_valid = self.validity_of_moves(board=b)
+            if len(X_valid) == 0: X_valid = x_valid
+            else: X_valid = np.concatenate((X_valid, x_valid), axis=0)
+
+        preds_score = self.prediction_method(model=saved_model, x=X, one_hot=one_hot)
+        preds_score = np.multiply(preds_score, X_valid)
+
+        preds = np.argmax(preds_score, axis=1).flatten()
+
+        cnt = 0
+        while cnt < size:
+            key = game_state_strs[cnt]
+            behaviour = behaviourMap[key]
+            behaviour['robotResponse'] = preds[cnt]
+            behaviourMap[key] = behaviour
+            cnt += 1
 
 
     def play_episode(self, n_games=25, queue_size=None, difficulty=None):

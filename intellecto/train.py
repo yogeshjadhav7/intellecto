@@ -29,9 +29,9 @@ simulation_records = []
 # In[2]:
 
 
-def get_training_data(n_games=N_GAMES_PER_EPISODE):
+def get_training_data(n_games=N_GAMES_PER_EPISODE, one_hot=True):
     f, l = I.play_episode(n_games=n_games)
-    #f = ipca.transform(f)
+    if one_hot: l = np.argmax(l, axis=1)
     return f, l
 
 
@@ -48,13 +48,13 @@ def ordering_loss(ground_truth, predictions):
     return np.mean(loss_array)
 
 
-# In[ ]:
+# In[4]:
 
 
 ipca = None #joblib.load(PCA_MODEL_NAME)
 
 
-# In[ ]:
+# In[5]:
 
 
 # MLP Classifier
@@ -154,7 +154,7 @@ def getmodel():
 
 
 def validation_model(games_per_difficulty=100):
-        x_val, y_val = get_training_data(n_games=100)
+        x_val, y_val = get_training_data(n_games=100, one_hot=False)
         saved_model = load_model(MODEL_NAME)
         orderingloss = ordering_loss(ground_truth=y_val, predictions=saved_model.predict(x_val))
         win_ratio_mean, win_ratio_per_difficulties = simulator.simulate_challenge_games(model=saved_model, ipca=ipca, 
@@ -174,7 +174,7 @@ def do_on_epoch_end(epoch, _):
         
 if TRAIN_MODEL:
     for n_episodes in range(N_EPISODES):
-        x, y = get_training_data()
+        x, y = get_training_data(one_hot=False)
         model = getmodel()
         print("\n\n\nTraining on episode #" + str(n_episodes + 1))
         model.fit(
