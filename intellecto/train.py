@@ -30,7 +30,7 @@ simulation_records = []
 
 
 def get_training_data(n_games=N_GAMES_PER_EPISODE, one_hot=True):
-    f, l = I.play_episode(n_games=n_games)
+    f, l, boards, queues, raw_moves_score = I.play_episode(n_games=n_games)
     if one_hot: l = np.argmax(l, axis=1)
     return f, l
 

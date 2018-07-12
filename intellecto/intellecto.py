@@ -14,7 +14,7 @@ from sklearn.preprocessing import PolynomialFeatures
 from keras.models import load_model
 import json
 import os
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.base import clone
 from sklearn.model_selection import GridSearchCV
 from sklearn.externals import joblib
@@ -195,6 +195,7 @@ class Intellecto:
 
         mapping_ratio = n_valid_options / self.n_bubbles
         mapped_difficulty = np.int(np.floor(mapping_ratio * difficulty))
+        #print("raw_moves_scores", raw_moves_scores, ", valid_ordering", valid_ordering, ", mapping_ratio", mapping_ratio, ", mapped_difficulty", mapped_difficulty)
         return valid_ordering[mapped_difficulty]
 
     def play_a_move_on_board(self, board, queue, difficulty=None):
@@ -207,13 +208,16 @@ class Intellecto:
                 raw_moves_scores.append(move_score)
 
         #moves_score = self.softmax(raw_moves_scores)
-        moves_score = self.one_hot_scores(raw_moves_scores)
+        #moves_score = self.one_hot_scores(raw_moves_scores)
         #moves_score = self.sigmoid(raw_moves_scores)
         #moves_score = self.squashed_score(raw_moves_scores)
         #moves_score = self.categorize(raw_moves_scores)
 
         i = self.choose_a_move(board, raw_moves_scores, difficulty)
         valid_move, board_, queue_, raw_move_score = self.play_move(i, board, queue)
+        moves_score = [0 for x in range(self.n_bubbles)]
+        moves_score[i] = 1
+        moves_score = np.array(moves_score)
         return i, board_, queue_, moves_score, raw_move_score, raw_moves_scores
 
 
@@ -226,16 +230,21 @@ class Intellecto:
             move, board_, queue_, moves_score, raw_move_score, raw_moves_score = self.play_a_move_on_board(board=board, queue=queue, difficulty=difficulty)
             board = board_
             queue = queue_
-            board_queue_moves_score_map.append({"board": board, "queue": queue, "moves_score": moves_score})
+            board_queue_moves_score_map.append({"board": board, "queue": queue, "moves_score": moves_score, "move": move,
+                                                "raw_moves_score": raw_moves_score})
             game_score += raw_move_score
             n_moves += 1
             game_over = self.is_game_over(board)
 
         return board_queue_moves_score_map, game_score
 
+    def calculate_relative_raw_moves_score(self, raw_moves_score):
+        raw_moves_score = np.subtract(raw_moves_score, np.amin(raw_moves_score))
+        raw_moves_score = np.divide(raw_moves_score, 0.001 + np.amax(raw_moves_score))
+        return raw_moves_score
 
     def prediction_method(self, model, x, one_hot=True):
-        if one_hot: return model.predict_proba(x)
+        #if one_hot: return model.predict_proba(x)
         return model.predict(x)
 
     def one_hot_board(self, b, q):
@@ -378,14 +387,14 @@ class Intellecto:
 
             if verbose == 1: print("parameters_config", parameters_config)
 
-            clf = GridSearchCV(estimator=RandomForestClassifier(random_state=42,
+            clf = GridSearchCV(estimator=RandomForestRegressor(random_state=42,
                                                                 n_estimators=base_n_trees + n_trees,
-                                                                oob_score=True,
-                                                                class_weight="balanced_subsample"),
+                                                                oob_score=True),
                                param_grid=parameters_config,
                                cv=n_cv,
                                verbose=verbose,
-                               n_jobs=8)
+                               n_jobs=8,
+                               scoring='mean_squared_error')
 
             clf.fit(x, y)
             prev_best_parameters = clf.best_params_
@@ -414,26 +423,37 @@ class Intellecto:
         except: return None
 
 
-    def train_model(self, features, labels, verbose=0):
+    def train_model(self, features, labels, verbose=0, one_hot=True):
         model, _ = self.cross_validate_and_fit(x=features, y=labels, verbose=verbose)
         return model
 
 
-    def train(self, behaviourList, one_hot=True, verbose=0):
+    def train(self, behaviourList, one_hot=True, verbose=0, auto_correct_ratio=0.1):
         X = []
         Y = []
+        n_auto_correct = int(len(behaviourList) * auto_correct_ratio)
+        print("n_auto_correct", n_auto_correct)
 
         for behaviour in behaviourList:
             game_state_str = behaviour['gameState']
             b, q = self.parse_game_state_str(game_state_str=game_state_str)
             x = self.one_hot_board(b=b, q=q)
             user_response = behaviour['userResponse']
+            correct_response, _, _, _, _, raw_moves_scores = self.play_a_move_on_board(board=b, queue=q)
+
+            '''
+            if n_auto_correct > 0:
+                n_auto_correct -= 1
+                user_response = correct_response
+            '''
+
             if not one_hot:
                 y = np.zeros((1,self.n_bubbles), dtype=np.int)
                 y[user_response] = 1
             else:
-                y = np.zeros((1,1), dtype=np.int)
-                y[0] = user_response
+                relative_score = self.calculate_relative_raw_moves_score(raw_moves_score=raw_moves_scores)
+                y = np.zeros((1,1), dtype=np.float64)
+                y[0] = relative_score[user_response]
 
             if len(X) == 0:
                 X = x
@@ -442,7 +462,7 @@ class Intellecto:
                 X = np.concatenate((X, x), axis=0)
                 Y = np.concatenate((Y, y), axis=0)
 
-        model = self.train_model(features=X, labels=Y, verbose=verbose)
+        model = self.train_model(features=X, labels=Y, verbose=verbose, one_hot=one_hot)
         return model
 
     def predict(self, behaviourMap, saved_model, one_hot=True):
@@ -450,8 +470,15 @@ class Intellecto:
         size = len(game_state_strs)
         X = []
         X_valid = []
+        relative_moves_scores = []
+
         for game_state_str in game_state_strs:
             b, q = self.parse_game_state_str(game_state_str=game_state_str)
+
+            _, _, _, _, _, raw_moves_scores = self.play_a_move_on_board(board=b, queue=q)
+            relative_scores = self.calculate_relative_raw_moves_score(raw_moves_score=raw_moves_scores)
+            relative_moves_scores.append(relative_scores)
+
             x = self.one_hot_board(b=b, q=q)
             if len(X) == 0: X = x
             else: X = np.concatenate((X, x), axis=0)
@@ -461,8 +488,10 @@ class Intellecto:
             else: X_valid = np.concatenate((X_valid, x_valid), axis=0)
 
         preds_score = self.prediction_method(model=saved_model, x=X, one_hot=one_hot)
-        preds_score = np.multiply(preds_score, X_valid)
 
+        if one_hot: preds_score = 1 - np.abs(np.subtract(relative_moves_scores, preds_score[:, None]))
+
+        preds_score = np.multiply(preds_score, X_valid)
         preds = np.argmax(preds_score, axis=1).flatten()
 
         cnt = 0
@@ -478,10 +507,14 @@ class Intellecto:
         if queue_size is None: queue_size = self.queue_size
         x_episode = []
         y_episode = []
+        b_episode = []
+        q_episode = []
+        raw_moves_score_episode = []
 
         for n_game in range(n_games):
             x_game = []
             y_game = []
+            raw_moves_score_game = []
 
             board, queue = self.reset_game(queue_size=queue_size)
             game_info_map, game_score = self.play_game(board=board, queue=queue, difficulty=difficulty)
@@ -489,6 +522,7 @@ class Intellecto:
                 b = info['board']
                 q = info['queue']
                 s = info['moves_score']
+                r_s = info["raw_moves_score"]
 
                 x = self.one_hot_board(b=b, q=q)
                 y = np.reshape(s, (1, s.size))
@@ -496,18 +530,26 @@ class Intellecto:
                 if len(x_game) == 0:
                     x_game = x
                     y_game = y
+                    raw_moves_score_game = np.array([r_s]) * 1.0
+                    b_episode.append(b)
+                    q_episode.append(q)
                 else:
                     x_game = np.concatenate((x_game, x), axis=0)
                     y_game = np.concatenate((y_game, y), axis=0)
+                    b_episode.append(b)
+                    q_episode.append(q)
+                    raw_moves_score_game = np.concatenate((raw_moves_score_game, np.array([r_s])), axis=0)
 
             if n_game == 0:
                 x_episode = x_game
                 y_episode = y_game
+                raw_moves_score_episode = raw_moves_score_game
             else:
                 x_episode = np.concatenate((x_episode, x_game), axis=0)
                 y_episode = np.concatenate((y_episode, y_game), axis=0)
+                raw_moves_score_episode = np.concatenate((raw_moves_score_episode, raw_moves_score_game), axis=0)
 
-        return x_episode, y_episode
+        return x_episode, y_episode, b_episode, q_episode, raw_moves_score_episode
 
     def plot(self, y_data, y_label, window=1, windowshift=1):
         filename = y_label + "_record.pdf"
