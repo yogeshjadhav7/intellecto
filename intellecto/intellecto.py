@@ -18,12 +18,13 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.base import clone
 from sklearn.model_selection import GridSearchCV
 from sklearn.externals import joblib
+from operator import itemgetter
 import warnings
 warnings.filterwarnings("ignore")
 
 class Intellecto:
     def __init__(self):
-        self.NONE_MOVE_SCORE = -2 * (9**3)
+        self.NONE_MOVE_SCORE = -1.0 * (9 ** 3)
         self.DEPTH = 1
         self.n_bubbles = 5
         self.queue_size = 30
@@ -31,7 +32,6 @@ class Intellecto:
         self.max_bubble_val = 9
         self.n_diificulties = 5
         self.poly = PolynomialFeatures(degree=3, include_bias=False)
-
 
     def _build_model_path(self, userId, dir="intellecto_service/saved_models/", one_hot=True):
         model_name = str(userId)
@@ -132,8 +132,12 @@ class Intellecto:
             deep_val = self.get_deep_move_score(next_board, next_queue, depth + 1)
             deep_val_scores.append(deep_val)
 
-        deep_score = self.NONE_MOVE_SCORE
+        deep_score = None
         for i in range(len(val_scores)):
+            if deep_score is None:
+                deep_score = val_scores[i] - deep_val_scores[i]
+                continue
+
             if (val_scores[i] - deep_val_scores[i]) > deep_score:
                 deep_score = val_scores[i] - deep_val_scores[i]
 
@@ -289,9 +293,9 @@ class Intellecto:
         params = ['max_depth', 'min_samples_split', 'min_samples_leaf']
         parameters_range = {}
         if prev_best_parameters is None:
-            parameters_range[params[0]] = [1, 2 ** n_trees]
-            parameters_range[params[1]] = [2, 2 ** n_trees]
-            parameters_range[params[2]] = [1, 2 ** n_trees]
+            parameters_range[params[0]] = [1, 4 * n_trees]
+            parameters_range[params[1]] = [2, 4 * n_trees]
+            parameters_range[params[2]] = [1, 4 * n_trees]
 
         else:
             for param in params:
@@ -329,11 +333,12 @@ class Intellecto:
 
     def cross_validate_and_fit(self, x, y, verbose=0):
         count = len(x)
-        base_n_trees = 32 #128
+        base_n_trees = 64 #128
         n_trees = 2 ** (int(np.log2(count + 1) / np.log2(6)))
         n_cv = max(2, int(count / (100)))
 
         if verbose == 1:
+            print("base_n_trees", base_n_trees)
             print("n_trees", n_trees)
             print("n_cv", n_cv)
             print("count", count)
@@ -423,37 +428,62 @@ class Intellecto:
         except: return None
 
 
+    def augment_training_data(self, features, labels, one_hot=True):
+        size = len(features)
+        f_set = []
+        for f in features:
+            f_set.append(str(f))
+
+        for index in range(size):
+            x = features[index]
+            y = labels[index]
+
+            augmented_x = np.flip(x, axis=0)
+            augmented_y = y
+
+            if str(augmented_x) in f_set: continue
+
+            if not one_hot:
+                response = np.argmax(augmented_y)
+                augmented_y[response] = 0
+                response = self.n_bubbles - 1 - response
+                augmented_y[response] = 1
+
+            augmented_x = np.array([augmented_x])
+            augmented_y = np.array([augmented_y])
+
+            features = np.concatenate((features, augmented_x), axis=0)
+            labels = np.concatenate((labels, augmented_y), axis=0)
+
+        return features, labels
+
+
     def train_model(self, features, labels, verbose=0, one_hot=True):
+        #features, labels = self.augment_training_data(features=features, labels=labels, one_hot=one_hot)
         model, _ = self.cross_validate_and_fit(x=features, y=labels, verbose=verbose)
         return model
 
 
-    def train(self, behaviourList, one_hot=True, verbose=0, auto_correct_ratio=0.1):
+    def train(self, behaviourList, one_hot=True, verbose=0, auto_correct_ratio=0.1, auto_correction_degree=0.5):
         X = []
         Y = []
-        n_auto_correct = int(len(behaviourList) * auto_correct_ratio)
-        print("n_auto_correct", n_auto_correct)
+        info_list = []
 
         for behaviour in behaviourList:
+            index = len(X)
             game_state_str = behaviour['gameState']
             b, q = self.parse_game_state_str(game_state_str=game_state_str)
             x = self.one_hot_board(b=b, q=q)
             user_response = behaviour['userResponse']
             correct_response, _, _, _, _, raw_moves_scores = self.play_a_move_on_board(board=b, queue=q)
-
-            '''
-            if n_auto_correct > 0:
-                n_auto_correct -= 1
-                user_response = correct_response
-            '''
+            relative_scores = self.calculate_relative_raw_moves_score(raw_moves_score=raw_moves_scores)
 
             if not one_hot:
                 y = np.zeros((1,self.n_bubbles), dtype=np.int)
                 y[user_response] = 1
             else:
-                relative_score = self.calculate_relative_raw_moves_score(raw_moves_score=raw_moves_scores)
                 y = np.zeros((1,1), dtype=np.float64)
-                y[0] = relative_score[user_response]
+                y[0] = relative_scores[user_response]
 
             if len(X) == 0:
                 X = x
@@ -461,6 +491,33 @@ class Intellecto:
             else:
                 X = np.concatenate((X, x), axis=0)
                 Y = np.concatenate((Y, y), axis=0)
+
+            info_element = {"index": index, "user_response": user_response,"relative_scores": relative_scores,
+                            "diff": np.abs(relative_scores[user_response] - relative_scores[correct_response])}
+
+            info_list.append(info_element)
+
+        n_auto_correct = int(len(behaviourList) * auto_correct_ratio)
+        print("n_auto_correct", n_auto_correct)
+        info_list = sorted(info_list, key=itemgetter('diff'), reverse=True)
+        for info_element in info_list:
+            if n_auto_correct <= 0: break
+            relative_scores = info_element["relative_scores"]
+            user_response = info_element["user_response"]
+            diff = info_element["diff"]
+            index = info_element["index"]
+            preds_score = relative_scores[user_response]
+            preds_score += diff * auto_correction_degree
+
+            if not one_hot:
+                preds_score = 1 - np.abs(np.subtract(relative_scores, preds_score[:, None]))
+                response = np.argmax(preds_score, axis=1).flatten()
+                Y[index][user_response] = 0
+                Y[index][response] = 1
+            else:
+                Y[index][0] = preds_score
+
+            n_auto_correct -= 1
 
         model = self.train_model(features=X, labels=Y, verbose=verbose, one_hot=one_hot)
         return model
