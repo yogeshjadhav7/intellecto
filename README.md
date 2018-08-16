@@ -99,10 +99,8 @@ python setup.py install
 ---
 First, the reader should know few details of the problem that I am trying to solve. Here, the goal is to create a Machine Learning model which will predict the move (response) of a user to unprecendented game-states.
 
-> Problem statement and the use case in the Android game :
-----
-##### USE CASE
 ---
+#### USE CASE:
 GAME STATE : [ B0, B1, B2, B3, B4, N ]
 Where Bi and N represent the integer value from the set: {None, 0, [1 to 9], [-1 to -9]}
 
@@ -112,18 +110,13 @@ N is the next bubble. It is the head of the NEXT QUEUE (Refer FAQs) which comes 
 
 RESPONSE : i # the bubble which user had popped when encountered the above state while playing Challenge games.
 
-#####  PROBLEM STATEMENT
 ---
-I am trying to generalize the response for game-states by creating ML models for each user using their respective game-state-responses data.
-
-#### Why??
-
-So as to simulate each users gameplay and users can play Challenge games against their own / friends robot (who mimics their characterists in making decisions to given game states). Reminds me of good old days of 90s where beating CPU in video games was an achievement! This, with a twist, the twist of Machine Learning!!
-
-#### Sounds cool, doesnt it ?!
+####  PROBLEM STATEMENT:
+**I am trying to generalize the response for game-states by creating ML models for each user using their respective game-state-responses data. WHY??**
+So as to simulate each users gameplay and users can play Challenge games against their own / friends robot (who mimics their characterists in making decisions to given game states). Reminds me of good old days of 90s where beating CPU in video games was an achievement! This, with a twist, the twist of Machine Learning!! **Sounds cool, doesnt it ?!**
 ---
 
-##### Now, Lets dive straight into the structure of the project and briefly know what each python file does.
+#### Now, Lets dive straight into the structure of the project and briefly know what each python file does.
 ---
 ---
 
@@ -164,3 +157,9 @@ This subroutine simulates the game play of Challenge robot game for specified di
 
 > **intellecto/{other files}**
 These files are related to the Tensorflow-Keras driven deep learning approach to build model for each user. Once this approach become production ready, I will update this README.
+
+
+
+
+
+
