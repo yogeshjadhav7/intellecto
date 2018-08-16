@@ -44,14 +44,14 @@ pyenv install 3.6.4
 sudo pip install virtualenv
 
 # mlenv is the name of virtualenv and python-envs is the directory that houses virtualenv on your system. You can change the names with corresponding changes below.
-mkdir -p ~/env/python-envs/mlenv
+mkdir -p ~/python-envs/mlenv
 
 # Create virtualenv
 virtualenv -p ~/.pyenv/versions/3.6.4/bin/python3.6 ~/python-envs/mlenv
 
 ```
 
-> Create an alias for activating virtualenv easy.
+> Create an alias for activating virtualenv everytime easily.
 ```sh
 
 # append this to your ~/.bashrc
@@ -89,8 +89,78 @@ pip install -r requirements.txt
 python setup.py install
 ```
 
->> Test the installation.
+> Test the installation.
 ``` sh
  => python
 >>> from intellecto import Intellecto
 ```
+
+### Project Walkthrough
+---
+First, the reader should know few details of the problem that I am trying to solve. Here, the goal is to create a Machine Learning model which will predict the move (response) of a user to unprecendented game-states.
+
+> Problem statement and the use case in the Android game :
+----
+##### USE CASE
+---
+GAME STATE : [ B0, B1, B2, B3, B4, N ]
+Where Bi and N represent the integer value from the set: {None, 0, [1 to 9], [-1 to -9]}
+
+Bis are the bubbles in the game play area. A user may pop any one of the i bubbles **which has no None value** and gets the points equal to B(i) * B(i - 1) * B(i + 1) added to their score. If B(i - 1) and/or B(i + 1) has None value then they are replaced by 1 in the product equation.
+
+N is the next bubble. It is the head of the NEXT QUEUE (Refer FAQs) which comes in place of Bi on popping ith bubble in the game play area. And the whole queue (not shown here) to the right of N gets shifted to the left and game gets a new N (if queue is not empty).
+
+RESPONSE : i # the bubble which user had popped when encountered the above state while playing Challenge games.
+
+#####  PROBLEM STATEMENT
+---
+I am trying to generalize the response for game-states by creating ML models for each user using their respective game-state-responses data.
+
+#### Why??
+
+So as to simulate each users gameplay and users can play Challenge games against their own / friends robot (who mimics their characterists in making decisions to given game states). Reminds me of good old days of 90s where beating CPU in video games was an achievement! This, with a twist, the twist of Machine Learning!!
+
+#### Sounds cool, doesnt it ?!
+---
+
+##### Now, Lets dive straight into the structure of the project and briefly know what each python file does.
+---
+---
+
+> **intellecto/intellecto.py**
+- The heart and soul of the project, this file houses the subroutines to carry out tasks ranging from simulations of the game play of Intellecto to training and validating Machine Learning models & carrying out predictions. Currently, Intellecto uses **sklearns RandomForest** algorithm to build and train the models.
+
+    > **There could be many reasons why user chose a particular response on a game-state. These unexplained reasons form characteristics of that user. Thus, as responses of users sometimes can never have any logically pattern or explanation, I felt ensemble technique is the way to go and hence RandomForest**.
+
+    **NOTE:** I am trying to solve this problem using deep learning as well. That is still in BETA state and can replace RandomForest on the production environment in near future. **Boolean flag one_hot is used throughout this project to distinguish between Sklearns RandomForest approach and Tensorflow-Keras driven deep learning approach**.
+
+- **def train**(self, behaviourList, one_hot=True, verbose=0, auto_correct_ratio=0.1, auto_correction_degree=0.5):
+This routine is called from **ml-services** to train the RandomForest model for a particular user using behaviourList of that user.
+
+- **def cross_validate_and_fit**(self, x, y, verbose=0):
+This subroutine of def train: helps in cross validating and finally returning the best fitted model (in terms of validation score) for the training data passed (x, y). As RandomForest is prone to overfitting, cross validating helps in generalizing better to unprecented game-states.
+
+-  **def _get_cv_parameters_range**(self, n_trees, prev_best_parameters=None, prev_parameters_config=None):
+This interesting subroutine helps in narrowing down the parameters of **GridSearchCV** using prev_best_parameters. This subroutine gets called till cross_validate_and_fit gets one best value for each parameter.
+
+- **def predict**(self, behaviourMap, saved_model, one_hot=True):
+This routine is called from **ml-services** to fetch predictions for the game-states in behaviourMap object passed.
+
+- **def play_episode**(self, n_games=25, queue_size=None, difficulty=None):
+This subroutine is used for simulating game play of Intellecto using **difficulty** as a means of choosing a response from the options of the responses for a given game-state.
+
+    > This routine is used by **challengesimulator.py** to guage the quality of ML model for a user.
+
+    For example, difficulty = 0 enforces simulator to choose the best response, difficulty = 1 enforces simulator to choose 2nd best response, and so on. More on this while describing challengesimulator.py
+
+> **intellecto/challengesimulator.py**
+- **def simulate_challenge_games**(self, model, ipca, predict_method=None, games_per_difficulty=100, queue_size=None, verbose=False):
+This routine simulates **games_per_difficulty** number of games for each difficulty. It appends the performance of the **model** per difficulty in **win_ratio_per_difficulties** list. It also returns the total average performance of the **model** accross all difficulties in **win_ratio_mean**.
+
+    > Through challengesimulator.py, we have now a **win_ratio_mean** (performance metric) to judge how good a ML model is in playing Challenge games. And as model is trained from its user itself, we can sense how better or worse a particular user has been playing Challenge games lately by comaparing previous **win_ratio_mean** data with the latest one. There is an impending feature update in Intellecto app which will use challegesimulator.py to notify the user of their performance fluctuations in Challenge games by pitching performance graph of their model against performance graphs of their friends. This will help to bring some competitiveness amoung users making them to play more.
+
+- **def simulate_challenge_game**(self, model, ipca, queue_size, predict_method=None, difficulty=None, verbose=False):
+This subroutine simulates the game play of Challenge robot game for specified difficulty. The scores of players and outcome of the game are returned to the caller routine **simulate_challenge_games**;
+
+> **intellecto/{other files}**
+These files are related to the Tensorflow-Keras driven deep learning approach to build model for each user. Once this approach become production ready, I will update this README.
