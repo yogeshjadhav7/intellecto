@@ -151,7 +151,7 @@ This routine simulates **games_per_difficulty** number of games for each difficu
 - **def simulate_challenge_game**(self, model, ipca, queue_size, predict_method=None, difficulty=None, verbose=False):
 This subroutine simulates the game play of Challenge robot game for specified difficulty. The scores of players and outcome of the game are returned to the caller routine **simulate_challenge_games**;
 
-> **intellecto/{other files}**
+### **intellecto/{other files}**
 These files are related to the Tensorflow-Keras driven deep learning approach to build model for each user. Once this approach become production ready, I will update this README.
 
 
