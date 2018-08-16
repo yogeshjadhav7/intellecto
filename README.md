@@ -114,9 +114,6 @@ First, the reader should know few details of the problem that I am trying to sol
 - **I am trying to generalize the response for game-states by creating ML models for each user using their respective game-state-responses data.**
 
 - So as to simulate each users gameplay and users can play Challenge games against their own / friends robot (who mimics their characterists in making decisions to given game states). Reminds me of good old days of 90s where beating CPU in video games was an achievement! This, with a twist, the twist of ML. Sounds cool, doesnt it ?!
-
-
-#### Now, lets dive straight into the structure of the project and briefly know what each python file does.
 ---
 
 ### **intellecto/intellecto.py**
